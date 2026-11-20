@@ -41,6 +41,40 @@ export function formatAsset(amount: number, asset: string) {
   return `${fmt(decimals, decimals).format(amount)} ${asset}`;
 }
 
+/** 126.000 sats (enteros, hacia abajo: nunca se muestra un sat que no existe). */
+export function formatSats(sats: number) {
+  const n = Math.max(0, Math.floor(sats));
+  return `${fmt(0, 0).format(n)} ${n === 1 ? "sat" : "sats"}`;
+}
+
+/** 0,00126000 BTC, a partir de sats. */
+export function formatBtc(sats: number, { unit = true } = {}) {
+  const btc = Math.floor(sats) / 100_000_000;
+  const text = fmt(8, 8).format(btc);
+  return unit ? `${text} BTC` : text;
+}
+
+/** 1.000 TH/s: el hashrate de un plan, siempre en TH/s. */
+export function formatTh(th: number) {
+  return `${fmt(0, 1).format(th)} TH/s`;
+}
+
+/** Hashrate con la unidad que le queda mejor: 250 TH/s, 30 PH/s, 850 EH/s, 1,2 ZH/s. */
+export function formatHashrate(th: number) {
+  const units: [number, string][] = [
+    [1e9, "ZH/s"],
+    [1e6, "EH/s"],
+    [1e3, "PH/s"],
+  ];
+  for (const [size, unit] of units) if (Math.abs(th) >= size) return `${fmt(0, 1).format(th / size)} ${unit}`;
+  return formatTh(th);
+}
+
+/** 42 sats/TH/día */
+export function formatHashprice(satsPerThDay: number) {
+  return `${fmt(0, 1).format(satsPerThDay)} sats/TH/día`;
+}
+
 const dt = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" });
 const dOnly = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" });
 const dYear = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short", year: "numeric" });

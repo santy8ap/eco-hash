@@ -30,9 +30,9 @@ export async function createUser(id: string, { profile = true, name = `Empresa $
 
 /**
  * Deja al usuario con un plan pagado (pago de prueba) cuyo primer mes empezó hace `days` días:
- * así ya tiene energía generada y saldo para retirar. Devuelve el id del plan.
+ * así ya tiene sats minados y saldo para retirar. Devuelve el id del plan.
  */
-export async function fundUser(userId: string, { planId = "p180", days = 10 } = {}) {
+export async function fundUser(userId: string, { planId = "h1000", days = 10 } = {}) {
   const { payWithTestPayment } = await import("@/lib/payments/test-payment");
   const { db } = await import("@/lib/db");
   const { planPeriod } = await import("@/lib/db/schema");

@@ -1,22 +1,22 @@
 import "server-only";
 import { eq } from "drizzle-orm";
-import { PLANT } from "@/config/plant";
+import { FARM } from "@/config/farm";
 import { auth } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { DEFAULT_SETTINGS } from "@/lib/plant-settings";
+import { DEFAULT_SETTINGS } from "@/lib/farm-settings";
 import type { Db } from "./client";
-import { plant, user } from "./schema";
+import { farm, user } from "./schema";
 
-/** Crea la fila de la planta con los valores iniciales si no existe. No se inventan clientes ni movimientos. */
-export async function seedPlant(db: Db) {
+/** Crea la fila de la granja con los valores iniciales si no existe. No se inventan clientes ni movimientos. */
+export async function seedFarm(db: Db) {
   await db
-    .insert(plant)
+    .insert(farm)
     .values({
-      id: PLANT.id,
+      id: FARM.id,
       name: DEFAULT_SETTINGS.name,
       location: DEFAULT_SETTINGS.location,
-      peakKw: DEFAULT_SETTINGS.peakKw,
-      saleCopPerKwh: DEFAULT_SETTINGS.saleCopPerKwh,
+      capacityTh: DEFAULT_SETTINGS.capacityTh,
+      satsPerThDay: DEFAULT_SETTINGS.satsPerThDay,
       planPrices: JSON.stringify(DEFAULT_SETTINGS.planPrices),
     })
     .onConflictDoNothing();

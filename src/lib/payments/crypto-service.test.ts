@@ -113,18 +113,18 @@ beforeEach(() => {
 describe("cotización cripto", () => {
   it("sin precio en vivo no se cotiza ni se crea la orden", async () => {
     priceDown = true;
-    await expect(quote("inv-050", 50, { planId: "p180", asset: "BNB", walletName: "MetaMask" })).rejects.toMatchObject({ status: 503 });
+    await expect(quote("inv-050", 50, { planId: "h100", asset: "BNB", walletName: "MetaMask" })).rejects.toMatchObject({ status: 503 });
     const rows = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.and(drizzle.eq(schema.ledgerTx.userId, "inv-050"), drizzle.eq(schema.ledgerTx.method, "crypto")));
     expect(rows).toHaveLength(0);
   });
 
   it("sin los datos de la empresa no se cotiza", async () => {
-    await expect(quote("inv-070", 70, { planId: "p180", asset: "BNB", walletName: "MetaMask" })).rejects.toMatchObject({ status: 412 });
+    await expect(quote("inv-070", 70, { planId: "h100", asset: "BNB", walletName: "MetaMask" })).rejects.toMatchObject({ status: 412 });
   });
 
   it("crea la orden con el monto exacto, la billetera destino y 20 minutos de vigencia", async () => {
     const before = Date.now();
-    const q = await quote("inv-051", 51, { planId: "p180", asset: "USDT", walletName: "Trust Wallet" });
+    const q = await quote("inv-051", 51, { planId: "h100", asset: "USDT", walletName: "Trust Wallet" });
     const row = await orderRow(q.orderId);
     expect(q).toMatchObject({ asset: "USDT", to: TREASURY, tokenContract: USDT, chainId: 56 });
     expect(BigInt(q.amountBaseUnits) * 4000n).toBeGreaterThanOrEqual(BigInt(row.amountCop) * 10n ** 18n);
@@ -137,12 +137,12 @@ describe("red de pruebas", () => {
   it("con cobros reales no se acepta cripto de la red de pruebas", async () => {
     vi.stubEnv("CRYPTO_NETWORK", "bsc-testnet");
     vi.stubEnv("DEMO_MODE", "false");
-    await expect(quote("inv-051", 51, { planId: "p180", asset: "BNB" })).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/red de pruebas/) });
+    await expect(quote("inv-051", 51, { planId: "h100", asset: "BNB" })).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/red de pruebas/) });
   });
 
   it("en modo de pruebas sí se puede cotizar en la red de pruebas", async () => {
     vi.stubEnv("CRYPTO_NETWORK", "bsc-testnet");
-    await expect(quote("inv-051", 51, { planId: "p180", asset: "BNB" })).resolves.toMatchObject({ chainId: 97, planName: "Plan 180", periodIndex: 1 });
+    await expect(quote("inv-051", 51, { planId: "h100", asset: "BNB" })).resolves.toMatchObject({ chainId: 97, planName: "Nonce", periodIndex: 1 });
   });
 });
 
@@ -152,23 +152,23 @@ describe("la wallet que paga debe ser del usuario", () => {
     const thief = acct(62);
     // El ladrón pone la dirección de la víctima, pero firma con su propia llave.
     const proof = await proofFor("inv-058", thief, victim.address);
-    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "p180", asset: "BNB", payer: victim.address, walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
+    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "h100", asset: "BNB", payer: victim.address, walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
   });
 
   it("la firma es para esta cuenta: no sirve la de otro usuario", async () => {
     const proof = await proofFor("inv-057", acct(63));
-    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "p180", asset: "BNB", payer: wallet(63), walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
+    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "h100", asset: "BNB", payer: wallet(63), walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
   });
 
   it("una firma vieja no sirve", async () => {
     const proof = await proofFor("inv-058", acct(64), wallet(64), Date.now() - 60 * 60_000);
-    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "p180", asset: "BNB", payer: wallet(64), walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
+    await expect(svc.createCryptoQuote({ userId: "inv-058", planId: "h100", asset: "BNB", payer: wallet(64), walletName: "MetaMask", proof }, deps)).rejects.toMatchObject({ status: 403 });
   });
 });
 
 describe("verificación en la cadena", () => {
   it("espera las confirmaciones y activa el mes una sola vez", async () => {
-    const q = await quote("inv-052", 52, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const q = await quote("inv-052", 52, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     const hash = mine({ from: wallet(52), asset: "BNB", amount: BigInt(q.amountBaseUnits), block: chain.latest - 1n });
     const first = await svc.submitCryptoPayment({ userId: "inv-052", orderId: q.orderId, txHash: hash }, deps);
     expect(first).toMatchObject({ state: "esperando", confirmations: 2, needed: 5 });
@@ -180,18 +180,18 @@ describe("verificación en la cadena", () => {
   });
 
   it("un hash ya usado no sirve para otra orden", async () => {
-    const a = await quote("inv-053", 53, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const a = await quote("inv-053", 53, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     const hash = mine({ from: wallet(53), asset: "BNB", amount: BigInt(a.amountBaseUnits), block: chain.latest - 10n });
     await svc.submitCryptoPayment({ userId: "inv-053", orderId: a.orderId, txHash: hash }, deps);
     expect((await orderRow(a.orderId)).status).toBe("confirmada");
-    const b = await quote("inv-053", 53, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const b = await quote("inv-053", 53, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     await expect(svc.submitCryptoPayment({ userId: "inv-053", orderId: b.orderId, txHash: hash }, deps)).rejects.toMatchObject({ status: 409 });
     expect(await entriesOf(b.orderId)).toHaveLength(0);
   });
 
   it("si alguien registra el hash de otra persona, falla y el hash queda libre para su dueño", async () => {
-    const victim = await quote("inv-054", 54, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
-    const thief = await quote("inv-055", 55, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const victim = await quote("inv-054", 54, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
+    const thief = await quote("inv-055", 55, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     const hash = mine({ from: wallet(54), asset: "BNB", amount: BigInt(victim.amountBaseUnits), block: chain.latest - 10n });
     const stolen = await svc.submitCryptoPayment({ userId: "inv-055", orderId: thief.orderId, txHash: hash }, deps);
     expect(stolen.state).toBe("fallida");
@@ -200,7 +200,7 @@ describe("verificación en la cadena", () => {
   });
 
   it("un pago incompleto queda por reembolsar sin activar el mes", async () => {
-    const q = await quote("inv-056", 56, { planId: "p180", asset: "USDT", walletName: "Trust Wallet" });
+    const q = await quote("inv-056", 56, { planId: "h100", asset: "USDT", walletName: "Trust Wallet" });
     const hash = mine({ from: wallet(56), asset: "USDT", amount: BigInt(q.amountBaseUnits) / 2n, block: chain.latest - 10n });
     const r = await svc.submitCryptoPayment({ userId: "inv-056", orderId: q.orderId, txHash: hash }, deps);
     expect(r.state).toBe("por_reembolsar");
@@ -209,12 +209,12 @@ describe("verificación en la cadena", () => {
   });
 
   it("solo el dueño de la orden puede registrar el pago", async () => {
-    const q = await quote("inv-057", 57, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const q = await quote("inv-057", 57, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     await expect(svc.submitCryptoPayment({ userId: "inv-058", orderId: q.orderId, txHash: newHash() }, deps)).rejects.toMatchObject({ status: 404 });
   });
 
   it("si el nodo está en otra red, no verifica nada", async () => {
-    const q = await quote("inv-059", 59, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const q = await quote("inv-059", 59, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     const hash = mine({ from: wallet(59), asset: "BNB", amount: BigInt(q.amountBaseUnits), block: chain.latest - 10n });
     // Un nodo mal configurado (testnet) aunque la app espera BNB Chain.
     const wrongNode: ChainReader = { ...reader, getChainId: async () => 97 };
@@ -223,7 +223,7 @@ describe("verificación en la cadena", () => {
   });
 
   it("al abrir el panel se reintentan los pagos que quedaron verificando", async () => {
-    const q = await quote("inv-060", 60, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+    const q = await quote("inv-060", 60, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
     const hash = mine({ from: wallet(60), asset: "BNB", amount: BigInt(q.amountBaseUnits), block: chain.latest });
     expect((await svc.submitCryptoPayment({ userId: "inv-060", orderId: q.orderId, txHash: hash }, deps)).state).toBe("esperando");
     chain.latest += 10n;
@@ -240,7 +240,7 @@ describe("verificación en la cadena", () => {
     }
 
     it("si el pago sí salió a tiempo, registrar el hash después activa el mes", async () => {
-      const q = await quote("inv-058", 58, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+      const q = await quote("inv-058", 58, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
       // Pagó desde su wallet, pero cerró la pestaña antes de que la página guardara el hash.
       const hash = mine({ from: wallet(58), asset: "BNB", amount: BigInt(q.amountBaseUnits), block: chain.latest - 10n });
       await expire("inv-058", q.orderId);
@@ -251,7 +251,7 @@ describe("verificación en la cadena", () => {
     });
 
     it("si el pago salió cuando la cotización ya había vencido, queda por reembolsar", async () => {
-      const q = await quote("inv-057", 57, { planId: "p180", asset: "BNB", walletName: "MetaMask" });
+      const q = await quote("inv-057", 57, { planId: "h100", asset: "BNB", walletName: "MetaMask" });
       await expire("inv-057", q.orderId);
       const block = chain.latest - 7n;
       const hash = mine({ from: wallet(57), asset: "BNB", amount: BigInt(q.amountBaseUnits), block });

@@ -5,7 +5,7 @@ import { BRAND } from "@/config/brand";
 import { db } from "@/lib/db";
 import { companyProfile, user } from "@/lib/db/schema";
 import { adminEmails, baseUrl, env, isDemoMode } from "@/lib/env";
-import { formatCop, formatDateTime } from "@/lib/format";
+import { formatBtc, formatCop, formatDateTime, formatSats } from "@/lib/format";
 import { createDbRateLimiter } from "@/lib/security/db-rate-limit";
 import { transferReference } from "@/lib/transfer-reference";
 
@@ -179,8 +179,8 @@ interface PaymentLike {
 interface WithdrawalLike {
   id: string;
   userId: string;
-  amountCop: number;
-  bankName: string | null;
+  amountSats: number;
+  address: string;
 }
 
 const METHOD: Record<string, string> = {
@@ -213,7 +213,7 @@ export const alertMessages = {
   paymentConfirmed: (p: PaymentLike, who: string): Alert => ({
     kind: "pago",
     subject: `Entró un pago de ${formatCop(p.amountCop)}`,
-    lines: [`${who} pagó ${monthOf(p)} con ${methodName(p.method)}. El mes ya está activo y su energía empezó a contar.`, `Orden ${p.id}.`],
+    lines: [`${who} pagó ${monthOf(p)} con ${methodName(p.method)}. El mes ya está activo y su hashrate empezó a minar.`, `Orden ${p.id}.`],
     path: "/admin/pagos",
   }),
   paymentToRefund: (p: PaymentLike, who: string): Alert => ({
@@ -236,21 +236,21 @@ export const alertMessages = {
   }),
   withdrawalRequested: (w: WithdrawalLike, who: string): Alert => ({
     kind: "retiro",
-    subject: `Retiro por aprobar: ${formatCop(w.amountCop)}`,
+    subject: `Retiro por enviar: ${formatSats(w.amountSats)}`,
     lines: [
-      `${who} pidió un retiro de ${formatCop(w.amountCop)} ${w.bankName ? `a su cuenta de ${w.bankName}` : "a su wallet"}.`,
-      `El saldo queda apartado hasta que lo pagues o lo rechaces en Retiros. Retiro ${w.id}.`,
+      `${who} pidió un retiro de ${formatSats(w.amountSats)} (${formatBtc(w.amountSats)}) a la dirección ${w.address}.`,
+      `Los sats quedan apartados hasta que los envíes y registres el txid, o rechaces el retiro, en Retiros. Retiro ${w.id}.`,
     ],
     path: "/admin/retiros",
   }),
-  reversal: (p: PaymentLike, who: string, providerStatus: string, stoppedEnergy: boolean): Alert => ({
+  reversal: (p: PaymentLike, who: string, providerStatus: string, stoppedMining: boolean): Alert => ({
     kind: "devolucion",
     subject: `Mercado Pago devolvió un pago de ${formatCop(p.amountCop)}`,
     lines: [
       `El pago ${p.id} de ${who} quedó devuelto o desconocido en Mercado Pago (estado: ${providerStatus}).`,
-      stoppedEnergy
-        ? "Ese mes dejó de generar energía, y la cuenta no puede retirar hasta que registres la conciliación en Pagos."
-        : "Ese pago no había activado energía.",
+      stoppedMining
+        ? "Ese mes dejó de minar, y la cuenta no puede retirar hasta que registres la conciliación en Pagos."
+        : "Ese pago no había activado minería.",
     ],
     path: "/admin/pagos",
   }),
@@ -317,8 +317,8 @@ export function alertWithdrawalRequested(w: WithdrawalLike) {
   alertAdmin(async () => alertMessages.withdrawalRequested(w, await customerName(w.userId)));
 }
 
-export function alertReversal(p: PaymentLike, providerStatus: string, stoppedEnergy: boolean) {
-  alertAdmin(async () => alertMessages.reversal(p, await customerName(p.userId), providerStatus, stoppedEnergy));
+export function alertReversal(p: PaymentLike, providerStatus: string, stoppedMining: boolean) {
+  alertAdmin(async () => alertMessages.reversal(p, await customerName(p.userId), providerStatus, stoppedMining));
 }
 
 /** Una misma falla avisa como mucho una vez cada 15 minutos, y todas juntas, 6 veces por hora. */

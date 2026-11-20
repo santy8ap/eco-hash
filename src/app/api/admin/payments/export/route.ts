@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const rows = await listPayments({ ...paymentFiltersFrom(new URL(req.url).searchParams), limit: 10_000 });
     let csv =
       "\ufeff" +
-      csvLine(["Fecha (Colombia)", "Confirmado (Colombia)", "Orden", "Cliente", "NIT o documento", "Correo", "Plan", "Mes", "Energía kWh", "Medio", "Estado", "Monto COP", "Referencia del pago", "Comprobante o hash", "Nota"]);
+      csvLine(["Fecha (Colombia)", "Confirmado (Colombia)", "Orden", "Cliente", "NIT o documento", "Correo", "Plan", "Mes", "Hashrate TH/s", "Medio", "Estado", "Monto COP", "Referencia del pago", "Comprobante o hash", "Nota"]);
     for (const p of rows)
       csv += csvLine([
         formatDateTime(p.createdAt),
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
         p.userEmail,
         p.planName,
         p.periodIndex,
-        p.kwh,
+        p.hashrateTh,
         adminMethodLabel(p.method),
         txStatusLabel(p.status),
         p.amountCop,

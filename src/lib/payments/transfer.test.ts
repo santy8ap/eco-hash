@@ -14,7 +14,7 @@ let drizzle: typeof import("drizzle-orm");
 let payments: typeof import("@/lib/admin/payments");
 const admin = { id: "admin-1", name: "Admin de prueba" };
 const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "X green Energy S.A.S.", holderId: "901234567-1" };
-const MONTH_180 = 20_880_000;
+const MONTH_180 = 460_000;
 
 afterEach(() => vi.stubEnv("DEMO_MODE", ""));
 
@@ -34,8 +34,8 @@ const periodsOf = async (txId: string) => dbMod.db.select().from(schema.planPeri
 describe("datos de la cuenta para transferencias", () => {
   it("sin datos guardados, la transferencia no está disponible", async () => {
     expect(await transfer.getTransferAccount()).toBeNull();
-    await expect(transfer.transferInstructions({ userId: "t1", planId: "p180" })).rejects.toMatchObject({ status: 503 });
-    await expect(transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: "COMP-1001" })).rejects.toMatchObject({ status: 503 });
+    await expect(transfer.transferInstructions({ userId: "t1", planId: "h100" })).rejects.toMatchObject({ status: 503 });
+    await expect(transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: "COMP-1001" })).rejects.toMatchObject({ status: 503 });
   });
 
   it("el admin guarda la cuenta; el número queda solo con dígitos", async () => {
@@ -82,7 +82,7 @@ describe("datos de la cuenta para transferencias", () => {
 describe("la empresa ve los datos y reporta su transferencia", () => {
   it("ve la cuenta, el valor exacto y la referencia del plan y el mes, sin crear ninguna orden", async () => {
     const before = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "t1"));
-    const info = await transfer.transferInstructions({ userId: "t1", planId: "p180" });
+    const info = await transfer.transferInstructions({ userId: "t1", planId: "h100" });
     expect(info).toMatchObject({ amountCop: MONTH_180, periodIndex: 1, order: null, account: { bank: "Bancolombia", accountNumber: "12345678901" } });
     expect(info.reference).toMatch(/^PLN-[0-9A-F]{8}-M1$/);
     const after = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "t1"));
@@ -90,39 +90,39 @@ describe("la empresa ve los datos y reporta su transferencia", () => {
   });
 
   it("al reportar, la orden queda por verificar con el monto del servidor y el comprobante, sin activar nada", async () => {
-    const r = await transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: " COMP-2001 " });
+    const r = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: " COMP-2001 " });
     expect(r.created).toBe(true);
     expect(r.order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: MONTH_180, periodIndex: 1, txHash: "COMP-2001", providerStatus: transfer.REPORTED_STATUS });
     expect(await periodsOf(r.order.id)).toHaveLength(0);
     // La referencia que vio la empresa es la del plan y el mes de la orden.
-    const info = await transfer.transferInstructions({ userId: "t1", planId: "p180" });
+    const info = await transfer.transferInstructions({ userId: "t1", planId: "h100" });
     expect(info.reference).toBe(transfer.transferReference(r.order.subscriptionId!, 1));
     expect(info.order?.id).toBe(r.order.id);
   });
 
   it("reportar el mismo mes otra vez devuelve la misma orden (no duplica)", async () => {
-    const a = await transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: "COMP-2001" });
-    const b = await transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: "COMP-2002" });
+    const a = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: "COMP-2001" });
+    const b = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: "COMP-2002" });
     expect(b).toMatchObject({ created: false, order: { id: a.order.id, txHash: "COMP-2001" } });
   });
 
   it("el comprobante es obligatorio y no acepta HTML", async () => {
-    await expect(transfer.reportTransfer({ userId: "t2", planId: "p180", receipt: "" })).rejects.toThrow();
-    await expect(transfer.reportTransfer({ userId: "t2", planId: "p180", receipt: "<script>x</script>" })).rejects.toThrow();
+    await expect(transfer.reportTransfer({ userId: "t2", planId: "h100", receipt: "" })).rejects.toThrow();
+    await expect(transfer.reportTransfer({ userId: "t2", planId: "h100", receipt: "<script>x</script>" })).rejects.toThrow();
   });
 
   it("sin datos personales completos no se puede", async () => {
-    await expect(transfer.transferInstructions({ userId: "t3", planId: "p180" })).rejects.toMatchObject({ status: 412 });
-    await expect(transfer.reportTransfer({ userId: "t3", planId: "p180", receipt: "COMP-3001" })).rejects.toMatchObject({ status: 412 });
+    await expect(transfer.transferInstructions({ userId: "t3", planId: "h100" })).rejects.toMatchObject({ status: 412 });
+    await expect(transfer.reportTransfer({ userId: "t3", planId: "h100", receipt: "COMP-3001" })).rejects.toMatchObject({ status: 412 });
   });
 
   it("si el precio cambió desde el resumen, pide revisar de nuevo", async () => {
-    await expect(transfer.transferInstructions({ userId: "t2", planId: "p180", expectedAmountCop: 1 })).rejects.toMatchObject({ status: 409 });
-    await expect(transfer.reportTransfer({ userId: "t2", planId: "p180", receipt: "COMP-4001", expectedAmountCop: 1 })).rejects.toMatchObject({ status: 409 });
+    await expect(transfer.transferInstructions({ userId: "t2", planId: "h100", expectedAmountCop: 1 })).rejects.toMatchObject({ status: 409 });
+    await expect(transfer.reportTransfer({ userId: "t2", planId: "h100", receipt: "COMP-4001", expectedAmountCop: 1 })).rejects.toMatchObject({ status: 409 });
   });
 
   it("no se puede pagar el plan de otra empresa", async () => {
-    const { order } = await transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: "COMP-2001" });
+    const { order } = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: "COMP-2001" });
     await expect(transfer.transferInstructions({ userId: "t2", subscriptionId: order.subscriptionId! })).rejects.toMatchObject({ status: 404 });
     await expect(transfer.reportTransfer({ userId: "t2", subscriptionId: order.subscriptionId!, receipt: "COMP-9001" })).rejects.toMatchObject({ status: 404 });
   });
@@ -130,7 +130,7 @@ describe("la empresa ve los datos y reporta su transferencia", () => {
 
 describe("el admin confirma o rechaza", () => {
   it("confirmar activa el mes con la referencia del banco, una sola vez", async () => {
-    const { order } = await transfer.reportTransfer({ userId: "t1", planId: "p180", receipt: "COMP-2001" });
+    const { order } = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: "COMP-2001" });
     const done = await transfer.confirmTransfer(admin, order.id, "BANCO-REF-77001");
     expect(done).toMatchObject({ status: "confirmada" });
     expect(await periodsOf(order.id)).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("el admin confirma o rechaza", () => {
   });
 
   it("la misma referencia del banco no sirve para confirmar otro pago", async () => {
-    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "p360", receipt: "COMP-5001" });
+    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "h250", receipt: "COMP-5001" });
     await expect(transfer.confirmTransfer(admin, order.id, "BANCO-REF-77001")).rejects.toMatchObject({ status: 409 });
     expect(await periodsOf(order.id)).toHaveLength(0);
   });
@@ -150,21 +150,21 @@ describe("el admin confirma o rechaza", () => {
     await createUser("t4");
     await createUser("t5");
     // El admin registró a mano un pago con esa referencia...
-    await registerManualPayment(admin, { userId: "t4", planId: "p180", reference: "BCO-CRUCE-1" });
+    await registerManualPayment(admin, { userId: "t4", planId: "h100", reference: "BCO-CRUCE-1" });
     // ...y luego intenta confirmar con la misma (escrita distinto) una transferencia reportada: es el mismo movimiento.
-    const { order } = await transfer.reportTransfer({ userId: "t5", planId: "p180", receipt: "COMP-CRUCE" });
+    const { order } = await transfer.reportTransfer({ userId: "t5", planId: "h100", receipt: "COMP-CRUCE" });
     await expect(transfer.confirmTransfer(admin, order.id, " bco-cruce-1 ")).rejects.toMatchObject({ status: 409 });
     expect(await periodsOf(order.id)).toHaveLength(0);
     // Al revés: una referencia ya usada para confirmar una transferencia no se puede registrar a mano.
     await transfer.confirmTransfer(admin, order.id, "BCO-CRUCE-2");
     await createUser("t6");
-    await expect(registerManualPayment(admin, { userId: "t6", planId: "p180", reference: "bco-cruce-2" })).rejects.toMatchObject({ status: 409 });
+    await expect(registerManualPayment(admin, { userId: "t6", planId: "h100", reference: "bco-cruce-2" })).rejects.toMatchObject({ status: 409 });
     const { eq } = drizzle;
     expect(await dbMod.db.select().from(schema.ledgerTx).where(eq(schema.ledgerTx.userId, "t6"))).toHaveLength(0);
   });
 
   it("rechazar cierra la orden con el motivo y no activa nada", async () => {
-    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "p360", receipt: "COMP-5001" });
+    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "h250", receipt: "COMP-5001" });
     const closed = await transfer.rejectTransfer(admin, order.id, "No llegó a la cuenta");
     expect(closed).toMatchObject({ status: "fallida" });
     expect(closed.note).toMatch(/No llegó a la cuenta/);
@@ -174,13 +174,13 @@ describe("el admin confirma o rechaza", () => {
   });
 
   it("solo se confirman transferencias", async () => {
-    await expect(transfer.confirmTransfer(admin, "IWE-NOEXISTE0", "BANCO-REF-1")).rejects.toMatchObject({ status: 404 });
+    await expect(transfer.confirmTransfer(admin, "ECH-NOEXISTE0", "BANCO-REF-1")).rejects.toMatchObject({ status: 404 });
   });
 
   it("con dinero real, una transferencia confirmada cuenta como recaudo", async () => {
     vi.stubEnv("DEMO_MODE", "false");
     const before = await payments.paymentSummary();
-    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "p180", receipt: "COMP-6001" });
+    const { order } = await transfer.reportTransfer({ userId: "t2", planId: "h100", receipt: "COMP-6001" });
     await transfer.confirmTransfer(admin, order.id, "BANCO-REF-88001");
     expect((await payments.paymentSummary()).totalCop).toBe(before.totalCop + MONTH_180);
   });
@@ -200,8 +200,8 @@ describe("aviso al administrador", () => {
     );
     try {
       const alerts = await import("@/lib/alerts");
-      const first = await transfer.reportTransfer({ userId: "t2", planId: "p540", receipt: "COMP-8001" });
-      const again = await transfer.reportTransfer({ userId: "t2", planId: "p540", receipt: "COMP-8001" });
+      const first = await transfer.reportTransfer({ userId: "t2", planId: "h500", receipt: "COMP-8001" });
+      const again = await transfer.reportTransfer({ userId: "t2", planId: "h500", receipt: "COMP-8001" });
       expect(again.created).toBe(false);
       await alerts.flushAlerts();
       expect(sent).toHaveLength(1);

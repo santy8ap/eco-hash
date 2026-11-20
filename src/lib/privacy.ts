@@ -15,7 +15,6 @@ import { newId } from "@/lib/ids";
 import { listSubscriptions } from "@/lib/plans/service";
 import { getBalance, toSubscriptionDTO } from "@/lib/portfolio";
 import { safeText } from "@/lib/security/text";
-import { readConfig } from "@/lib/settings";
 import { DAY_MS, TZ_OFFSET_MS } from "@/lib/time";
 
 /**
@@ -51,8 +50,7 @@ export async function exportPersonalData(userId: string, now = Date.now()) {
   if (!u) throw new MarketError("Cuenta no encontrada", 404);
   const [profile] = await db.select().from(companyProfile).where(eq(companyProfile.userId, userId));
   const providers = await db.select({ providerId: account.providerId, createdAt: account.createdAt }).from(account).where(eq(account.userId, userId));
-  const { solar } = await readConfig();
-  const plans = (await listSubscriptions(userId)).map((s) => toSubscriptionDTO(s, solar, now));
+  const plans = (await listSubscriptions(userId)).map((s) => toSubscriptionDTO(s, now));
   const movements = await db.select().from(ledgerTx).where(eq(ledgerTx.userId, userId)).orderBy(asc(ledgerTx.createdAt));
   const [wallet] = await db.select().from(walletLink).where(eq(walletLink.userId, userId));
   const requests = await db.select().from(dataRequest).where(eq(dataRequest.userId, userId)).orderBy(asc(dataRequest.createdAt));
@@ -88,10 +86,10 @@ export async function exportPersonalData(userId: string, now = Date.now()) {
       estado: p.state,
       mesesPagados: p.paidMonths,
       meses: p.months,
-      precioCompraCopPorKwh: p.priceCopPerKwh,
-      precioVentaCopPorKwh: p.saleCopPerKwh,
-      energiaGeneradaKwh: Math.round(p.generatedKwh),
-      periodos: p.periods.map((x) => ({ mes: x.index, desde: iso(x.startsAt), hasta: iso(x.endsAt) })),
+      hashrateThS: p.hashrateTh,
+      precioCopPorThAlMes: p.priceCopPerThMonth,
+      satsMinados: Math.floor(p.minedSats),
+      periodos: p.periods.map((x) => ({ mes: x.index, desde: iso(x.startsAt), hasta: iso(x.endsAt), hashpriceSatsPorThDia: x.satsPerThDay })),
     })),
     movimientos: movements.map((t) => ({
       id: t.id,
@@ -102,15 +100,13 @@ export async function exportPersonalData(userId: string, now = Date.now()) {
       fecha: iso(t.createdAt),
       confirmadoEl: iso(t.confirmedAt),
       mes: t.periodIndex,
-      energiaKwh: t.kwh,
+      hashrateThS: t.hashrateTh,
+      sats: t.amountSats,
       activo: t.asset,
       cantidad: t.assetAmount,
       red: t.network,
-      wallet: t.walletAddress,
-      hashOComprobante: t.txHash,
-      banco: t.bankName,
-      tipoDeCuenta: t.bankAccountType,
-      numeroDeCuenta: t.bankAccountNumber,
+      walletODireccionBitcoin: t.walletAddress,
+      hashOTxid: t.txHash,
       nota: t.note,
     })),
     wallet: wallet ? { direccion: wallet.address, nombre: wallet.walletName, red: wallet.chainId, conectadaEl: iso(wallet.connectedAt) } : null,
@@ -196,8 +192,7 @@ export async function requestDeletion(userId: string, reason?: string, now = Dat
 
 /** Lo que impide eliminar la cuenta hoy. Vacío: se puede eliminar. */
 export async function deletionBlockers(userId: string, now = Date.now()): Promise<string[]> {
-  const { solar } = await readConfig();
-  const plans = (await listSubscriptions(userId)).map((s) => toSubscriptionDTO(s, solar, now));
+  const plans = (await listSubscriptions(userId)).map((s) => toSubscriptionDTO(s, now));
   const blockers: string[] = [];
   const live = plans.filter((p) => p.state === "activa" || p.state === "en_pausa" || p.state === "en_revision");
   if (live.length) blockers.push(`Tiene ${live.length === 1 ? "un plan vigente" : `${live.length} planes vigentes`} (${live.map((p) => p.planName).join(", ")}). Ciérralo antes, si así lo acordaron.`);

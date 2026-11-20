@@ -16,7 +16,7 @@ async function payAllMonths(userId: string, days: number) {
   const { db } = await import("@/lib/db");
   const { planPeriod } = await import("@/lib/db/schema");
   const { eq, sql } = await import("drizzle-orm");
-  const first = await payWithTestPayment({ userId, planId: "p180" });
+  const first = await payWithTestPayment({ userId, planId: "h100" });
   const subscriptionId = first.order.subscriptionId as string;
   await payWithTestPayment({ userId, subscriptionId });
   await payWithTestPayment({ userId, subscriptionId });
@@ -38,7 +38,7 @@ beforeAll(async () => {
   await payAllMonths("r2", 95); // terminó hace 5 días
   await payAllMonths("r3", 95); // terminó hace 5 días…
   const { payWithTestPayment } = await import("@/lib/payments/test-payment");
-  await payWithTestPayment({ userId: "r3", planId: "p180" }); // …y compró otro igual
+  await payWithTestPayment({ userId: "r3", planId: "h100" }); // …y compró otro igual
   await payAllMonths("r4", 30); // le quedan 60 días
 }, 120_000);
 

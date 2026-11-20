@@ -8,12 +8,12 @@ import { bogotaMs } from "@/lib/time";
 
 describe("continuidad segura de la compra", () => {
   it("conserva el plan al ir al ingreso", () => {
-    const destination = planCheckoutHref("p180");
+    const destination = planCheckoutHref("h100");
     expect(
       new URL(loginHref(destination), "https://app.invalid").searchParams.get(
         "next",
       ),
-    ).toBe("/comprar?plan=p180");
+    ).toBe("/comprar?plan=h100");
     expect(safeReturnTo(destination)).toBe(destination);
     expect(safeReturnTo("/panel/billetera?desde=2026-11-10")).toBe(
       "/panel/billetera?desde=2026-11-10",
@@ -68,23 +68,13 @@ describe("exportación y fechas", () => {
 });
 
 describe("precios revisados antes de pagar", () => {
-  const current = { amountCop: 20880000, saleCopPerKwh: 400 };
-  it("admite lo revisado y conserva compatibilidad con clientes anteriores", () => {
-    expect(() =>
-      assertExpectedPayment(current, {
-        expectedAmountCop: 20880000,
-        expectedSaleCopPerKwh: 400,
-      }),
-    ).not.toThrow();
+  const current = { amountCop: 460000 };
+  it("admite lo revisado y un pago sin importe esperado", () => {
+    expect(() => assertExpectedPayment(current, { expectedAmountCop: 460000 })).not.toThrow();
     expect(() => assertExpectedPayment(current, {})).not.toThrow();
   });
-  it("exige revisar de nuevo si cambió el importe o el precio de venta", () => {
-    expect(() =>
-      assertExpectedPayment(current, { expectedAmountCop: 20000000 }),
-    ).toThrow(/actualizaron/);
-    expect(() =>
-      assertExpectedPayment(current, { expectedSaleCopPerKwh: 420 }),
-    ).toThrow(/actualizaron/);
+  it("exige revisar de nuevo si cambió la mensualidad", () => {
+    expect(() => assertExpectedPayment(current, { expectedAmountCop: 445000 })).toThrow(/actualizaron/);
   });
 });
 

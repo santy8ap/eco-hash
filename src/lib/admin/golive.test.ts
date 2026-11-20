@@ -155,7 +155,7 @@ describe("lista de configuración", () => {
   });
 
   it("con dinero real, los pagos de prueba que quedan bloquean la salida en vivo", async () => {
-    await pay.payWithTestPayment({ userId: "real-1", planId: "p180" });
+    await pay.payWithTestPayment({ userId: "real-1", planId: "h100" });
     expect((await byId())["datos-prueba"].state).toBe("info");
     vi.stubEnv("DEMO_MODE", "false");
     expect((await byId())["datos-prueba"]).toMatchObject({
@@ -226,7 +226,7 @@ describe("borrar los datos de prueba", () => {
       city: "Medellín",
       acceptTerms: true,
     });
-    await pay.payWithTestPayment({ userId: "demo-1", planId: "p360" });
+    await pay.payWithTestPayment({ userId: "demo-1", planId: "h250" });
     vi.stubEnv("DEMO_MODE", "false");
 
     const r = await reset.resetDemoData(actor, PHRASE);

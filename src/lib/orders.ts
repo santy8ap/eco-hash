@@ -123,14 +123,14 @@ const NOT_ACTIVATED: Record<
   "sin_cupo" | "mes_pagado" | "plan_cerrado" | "plan_en_revision",
   string
 > = {
-  sin_cupo: "La planta se quedó sin cupo para este plan.",
+  sin_cupo: "La granja se quedó sin capacidad libre para este plan.",
   mes_pagado: "Este mes del plan ya estaba pagado.",
   plan_cerrado: "El plan ya estaba cerrado cuando se confirmó el pago.",
   plan_en_revision: "El plan tiene una devolución pendiente de conciliación.",
 };
 
 /**
- * Activa el mes de energía de una orden pagada. Idempotente.
+ * Activa el mes de minería de una orden pagada. Idempotente.
  * `reopen`: estados cerrados que un pago aprobado puede reabrir (p. ej. un intento rechazado en
  * Mercado Pago seguido de uno aprobado para la misma orden).
  */
@@ -140,7 +140,7 @@ export async function fulfillOrder(
   { now = Date.now(), reopen = [] as TxStatus[] } = {},
 ): Promise<{ outcome: FulfillOutcome; order: OrderRow }> {
   // La configuración se lee antes de abrir la transacción; dentro no hay red ni otra conexión.
-  const { plantDailyKwh } = await readConfig();
+  const { capacityTh, settings } = await readConfig();
   const result = await writeTransaction(
     async (session): Promise<{ outcome: FulfillOutcome; order: OrderRow }> => {
       const tx = await getOrder(orderId, session);
@@ -177,7 +177,8 @@ export async function fulfillOrder(
       // Un error de base de datos conserva la orden abierta para el reintento del proveedor.
       const activation = await activatePeriod(order, now, {
         session,
-        plantDailyKwh,
+        capacityTh,
+        satsPerThDay: settings.satsPerThDay,
       });
       if (activation !== "activado") {
         const real = REAL_PAYMENT_METHODS.includes(
@@ -211,7 +212,7 @@ export async function fulfillOrder(
       userId: order.userId,
       plan: order.subscriptionId,
       mes: order.periodIndex,
-      kwh: order.kwh,
+      hashrateTh: order.hashrateTh,
       amountCop: order.amountCop,
       proveedor: order.method,
       providerId: order.providerId,

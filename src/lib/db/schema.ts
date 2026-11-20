@@ -105,24 +105,24 @@ export const verification = sqliteTable(
   (t) => [index("verification_identifier_idx").on(t.identifier)],
 );
 
-/* ───────────── Dominio: planes de energía ───────────── */
+/* ───────────── Dominio: planes de hashrate ───────────── */
 
-/** La planta y los precios vigentes (una sola fila). Los edita el administrador. */
-export const plant = sqliteTable("plant", {
+/** La granja, el hashprice y los precios vigentes (una sola fila). Los edita el administrador. */
+export const farm = sqliteTable("farm", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   location: text("location").notNull(),
-  /** Potencia máxima de la curva solar (kW) */
-  peakKw: real("peak_kw").notNull().default(8000),
-  /** Precio al que se vende toda la energía (COP por kWh) */
-  saleCopPerKwh: integer("sale_cop_per_kwh").notNull().default(400),
-  /** JSON { [idDelPlan]: precio por kWh }. Lo que falte usa el valor de config/plans.ts */
+  /** Hashrate total que se puede vender (TH/s) */
+  capacityTh: real("capacity_th").notNull().default(30000),
+  /** Hashprice vigente: sats que mina 1 TH/s en un día. Cada mes pagado guarda el suyo. */
+  satsPerThDay: real("sats_per_th_day").notNull().default(42),
+  /** JSON { [idDelPlan]: precio por TH/s al mes }. Lo que falte usa el valor de config/plans.ts */
   planPrices: text("plan_prices").notNull().default("{}"),
   updatedAt: integer("updated_at"),
 });
 
 /**
- * Un plan de energía comprado por una empresa. Guarda las condiciones con las que se compró:
+ * Un plan de hashrate comprado por un cliente. Guarda las condiciones con las que se compró:
  * un cambio de precios solo aplica a planes nuevos. Sin periodos es un borrador (no se ha pagado).
  */
 export const planSubscription = sqliteTable(
@@ -134,11 +134,11 @@ export const planSubscription = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     planId: text("plan_id").notNull(),
     planName: text("plan_name").notNull(),
-    totalKwh: real("total_kwh").notNull(),
+    /** Hashrate contratado (TH/s) */
+    hashrateTh: real("hashrate_th").notNull(),
     months: integer("months").notNull(),
-    dailyKwh: real("daily_kwh").notNull(),
-    priceCopPerKwh: integer("price_cop_per_kwh").notNull(),
-    saleCopPerKwh: integer("sale_cop_per_kwh").notNull(),
+    /** Precio por TH/s durante un mes de 30 días (COP) */
+    priceCopPerThMonth: integer("price_cop_per_th_month").notNull(),
     createdAt: integer("created_at").notNull(),
     /** Cuándo se confirmó el primer pago */
     startedAt: integer("started_at"),
@@ -148,7 +148,7 @@ export const planSubscription = sqliteTable(
   (t) => [index("plan_sub_user_idx").on(t.userId)],
 );
 
-/** Un mes pagado de un plan: 30 días de energía. */
+/** Un mes pagado de un plan: 30 días de minería al hashprice vigente cuando se activó. */
 export const planPeriod = sqliteTable(
   "plan_period",
   {
@@ -160,7 +160,10 @@ export const planPeriod = sqliteTable(
     idx: integer("idx").notNull(),
     startsAt: integer("starts_at").notNull(),
     endsAt: integer("ends_at").notNull(),
-    kwh: real("kwh").notNull(),
+    /** Hashrate del mes (TH/s) */
+    hashrateTh: real("hashrate_th").notNull(),
+    /** Hashprice que fija este mes (sats por TH/s al día) */
+    satsPerThDay: real("sats_per_th_day").notNull(),
     amountCop: integer("amount_cop").notNull(),
     /** Pago que lo activó */
     txId: text("tx_id").notNull(),
@@ -173,7 +176,7 @@ export const planPeriod = sqliteTable(
   ],
 );
 
-/** plan_mes: pago de un mes de un plan. retiro: la empresa retira su saldo. */
+/** plan_mes: pago de un mes de un plan. retiro: el cliente retira sus sats a una dirección Bitcoin. */
 export const TX_KINDS = ["plan_mes", "retiro"] as const;
 /** por_reembolsar: el pago llegó pero no se pudo activar (sin cupo, mes ya pagado, monto distinto); reembolsada: el admin ya lo devolvió. */
 export const TX_STATUSES = [
@@ -187,13 +190,13 @@ export const TX_STATUSES = [
   "por_reembolsar",
   "reembolsada",
 ] as const;
-/** Cómo se pagó: Mercado Pago, cripto directo a la billetera de la empresa, pago registrado por el admin o pago de prueba (solo en modo de pruebas). */
+/** Cómo se pagó: Mercado Pago, cripto directo a la billetera de eco-hash, pago registrado por el admin o pago de prueba (solo en modo de pruebas). */
 export const PAYMENT_METHODS = [
   "demo",
   "mercadopago",
   "crypto",
   "manual",
-  // La empresa transfiere a la cuenta de la empresa y el admin confirma con la referencia del banco.
+  // El cliente transfiere a la cuenta de eco-hash y el admin confirma con la referencia del banco.
   "transferencia",
 ] as const;
 export type TxKind = (typeof TX_KINDS)[number];
@@ -214,10 +217,12 @@ export const ledgerTx = sqliteTable(
     assetAmount: real("asset_amount"),
     network: text("network"),
     chainId: integer("chain_id"),
+    /** Wallet que pagó en cripto, o la dirección Bitcoin de destino de un retiro */
     walletAddress: text("wallet_address"),
     walletName: text("wallet_name"),
     message: text("message"),
     signature: text("signature"),
+    /** Hash on-chain: el del pago en cripto, o el txid del envío de un retiro */
     txHash: text("tx_hash"),
     /** Motivo de un rechazo o de un pago que no se pudo activar */
     note: text("note"),
@@ -236,12 +241,10 @@ export const ledgerTx = sqliteTable(
     /** Plan y mes que paga una orden plan_mes */
     subscriptionId: text("subscription_id"),
     periodIndex: integer("period_index"),
-    /** Energía del mes pagado (kWh) */
-    kwh: real("kwh"),
-    /** Retiro a una cuenta bancaria a nombre de la empresa */
-    bankName: text("bank_name"),
-    bankAccountType: text("bank_account_type"),
-    bankAccountNumber: text("bank_account_number"),
+    /** Hashrate del mes que paga una orden plan_mes (TH/s) */
+    hashrateTh: real("hashrate_th"),
+    /** Sats de un retiro. amount_cop guarda su equivalente en pesos cuando se pidió, solo como referencia. */
+    amountSats: integer("amount_sats"),
   },
   (t) => [
     index("tx_user_idx").on(t.userId, t.createdAt),
@@ -254,7 +257,7 @@ export const ledgerTx = sqliteTable(
   ],
 );
 
-/** Devoluciones verificadas: conservan el corte de generación y la conciliación posterior. */
+/** Devoluciones verificadas: conservan el corte de la minería y la conciliación posterior. */
 export const paymentReview = sqliteTable(
   "payment_review",
   {
@@ -288,7 +291,7 @@ export const jobState = sqliteTable("job_state", {
 export const DOC_TYPES = ["CC", "CE", "PP"] as const;
 export type DocType = (typeof DOC_TYPES)[number];
 
-/** Datos de la empresa: obligatorios antes del primer pago. */
+/** Datos del titular: obligatorios antes del primer pago. */
 export const companyProfile = sqliteTable("company_profile", {
   userId: text("user_id")
     .primaryKey()
@@ -341,7 +344,7 @@ export const dataRequest = sqliteTable(
 export const CUSTOMER_EMAIL_STATUSES = ["enviando", "enviado", "fallido"] as const;
 
 /**
- * Los correos que se le envían a cada comercializador (pago confirmado, retiro pagado, mensualidad por vencer…).
+ * Los correos que se le envían a cada cliente (pago confirmado, retiro enviado, mensualidad por vencer…).
  * La clave identifica el aviso (p. ej. «mensualidad:PLN-…:2»): el mismo aviso nunca se envía dos veces, y uno
  * que falló se reintenta hasta 3 veces. No guarda el correo de destino: se toma de la cuenta al enviar.
  */
@@ -393,7 +396,7 @@ export const adminMember = sqliteTable("admin_member", {
 });
 
 export const ADMIN_ACTIONS = [
-  "config_planta",
+  "config_granja",
   "pago_manual",
   "cerrar_plan",
   "aprobar_retiro",

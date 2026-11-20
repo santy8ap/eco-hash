@@ -81,7 +81,7 @@ describe("configuración", () => {
 
   it("apagados, no se envía nada ni queda constancia", async () => {
     vi.stubEnv("CUSTOMER_EMAIL_FROM", "");
-    await admin.registerManualPayment(actor, { userId: "m8", planId: "p180", reference: "BCO-APAGADO-1" });
+    await admin.registerManualPayment(actor, { userId: "m8", planId: "h100", reference: "BCO-APAGADO-1" });
     await flush();
     expect(sent).toHaveLength(0);
     const rows = await dbMod.db.select().from(schema.customerEmail).where(drizzle.eq(schema.customerEmail.userId, "m8"));
@@ -91,7 +91,7 @@ describe("configuración", () => {
 
 describe("pagos", () => {
   it("un pago confirmado avisa una sola vez, con los días que genera ese mes, desde el remitente propio y con respuesta a soporte", async () => {
-    const tx = await admin.registerManualPayment(actor, { userId: "m1", planId: "p180", reference: "BCO-CORREO-1" });
+    const tx = await admin.registerManualPayment(actor, { userId: "m1", planId: "h100", reference: "BCO-CORREO-1" });
     await flush();
     const [email, ...rest] = to("m1");
     expect(rest).toHaveLength(0);
@@ -113,7 +113,7 @@ describe("pagos", () => {
   });
 
   it("el pago de prueba no avisa", async () => {
-    await fundUser("m7", { planId: "p180", days: 1 });
+    await fundUser("m7", { planId: "h100", days: 1 });
     await flush();
     expect(to("m7")).toHaveLength(0);
   });
@@ -137,7 +137,7 @@ describe("pagos", () => {
   it("una transferencia que el admin no encontró avisa con el motivo y el enlace para pagar ese mes", async () => {
     const transfer = await import("@/lib/payments/transfer");
     await transfer.saveTransferAccount(actor, { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "X green Energy S.A.S.", holderId: "901234567-1" });
-    const { order } = await transfer.reportTransfer({ userId: "m3", planId: "p180", receipt: "COMP-3311" });
+    const { order } = await transfer.reportTransfer({ userId: "m3", planId: "h100", receipt: "COMP-3311" });
     await transfer.rejectTransfer(actor, order.id, "No aparece en el extracto del banco");
     await flush();
     const [email] = to("m3");
@@ -150,7 +150,7 @@ describe("pagos", () => {
 describe("retiros", () => {
   it("pagado: dice a qué cuenta y con qué referencia; rechazado: el motivo y que el dinero volvió al saldo", async () => {
     const { createBankWithdrawal } = await import("@/lib/withdrawals");
-    await fundUser("m4", { planId: "p360", days: 10 });
+    await fundUser("m4", { planId: "h250", days: 10 });
     const a = await createBankWithdrawal({ userId: "m4", amountCop: 2_000_000, destination: BANK });
     const b = await createBankWithdrawal({ userId: "m4", amountCop: 1_000_000, destination: BANK });
     await admin.decideWithdrawal(actor, a.id, "aprobar", "", "ENVIO-998877");
@@ -168,13 +168,13 @@ describe("retiros", () => {
 
 describe("recordatorios", () => {
   it("mensualidad por vencer y plan en pausa: uno por plan y por mes, aunque la tarea corra muchas veces", async () => {
-    await fundUser("m5", { planId: "p180", days: 26 });
-    await fundUser("m6", { planId: "p180", days: 33 });
+    await fundUser("m5", { planId: "h100", days: 26 });
+    await fundUser("m6", { planId: "h100", days: 33 });
     const first = await reminders.sendPlanReminders();
     expect(first.enviados).toBeGreaterThanOrEqual(2);
-    expect(to("m5").map((s) => s.subject)).toEqual(["[Pruebas] Tu Plan 180 necesita el pago del mes 2"]);
+    expect(to("m5").map((s) => s.subject)).toEqual(["[Pruebas] Tu Nonce necesita el pago del mes 2"]);
     expect(to("m5")[0].text).toContain(`Paga el mes 2 (${formatCop(20_880_000)}) antes de esa fecha`);
-    expect(to("m6").map((s) => s.subject)).toEqual(["[Pruebas] Tu Plan 180 está en pausa"]);
+    expect(to("m6").map((s) => s.subject)).toEqual(["[Pruebas] Tu Nonce está en pausa"]);
     expect(to("m6")[0].text).toMatch(/Puedes retomarlo hasta el /);
     sent = [];
     expect((await reminders.sendPlanReminders()).enviados).toBe(0);
@@ -183,7 +183,7 @@ describe("recordatorios", () => {
 
   it("las reglas: avisa 5 días antes de la mensualidad, 7 antes de que termine el plan y no si ya lo renovó", () => {
     const now = Date.UTC(2026, 10, 13, 15);
-    const plan = { id: "PLN-1", planId: "p180", planName: "Plan 180", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 20_880_000, graceEndsAt: null };
+    const plan = { id: "PLN-1", planId: "h100", planName: "Nonce", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 20_880_000, graceEndsAt: null };
     expect(reminders.reminderFor({ ...plan, state: "activa" }, now, false)).toBeNull();
     expect(reminders.reminderFor({ ...plan, state: "activa", paidUntil: now + 4 * DAY }, now, false)?.key).toBe("mensualidad:PLN-1:2");
     const ending = { ...plan, paidMonths: 3, state: "activa" as const, paidUntil: now + 6 * DAY };

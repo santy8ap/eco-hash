@@ -1,8 +1,7 @@
 import "server-only";
 import { hasPersonalDetails } from "@/lib/profile-schema";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
-import { PLANT } from "@/config/plant";
-import type { SolarDay } from "@/config/solar";
+import { FARM } from "@/config/farm";
 import { db } from "@/lib/db";
 import {
   adminAudit,
@@ -10,7 +9,7 @@ import {
   dataRequest,
   ledgerTx,
   paymentReview,
-  plant,
+  farm,
   planSubscription,
   user,
   type AdminAction,
@@ -20,8 +19,8 @@ import { audit, type Actor } from "./audit";
 import { DAY_MS } from "@/lib/time";
 import { env, isDemoMode } from "@/lib/env";
 import { MarketError } from "@/lib/errors";
-import { formatCop } from "@/lib/format";
-import { orderCode, simulatedTxHash } from "@/lib/ids";
+import { formatCop, formatSats } from "@/lib/format";
+import { orderCode, simulatedBtcTxid } from "@/lib/ids";
 import { fulfillOrder } from "@/lib/orders";
 import { emailWithdrawalDecided } from "@/lib/customer-email";
 import { bankReferenceOwner } from "@/lib/payments/bank-reference";
@@ -31,13 +30,13 @@ import {
   requireNoPaymentReview,
 } from "@/lib/payments/reversals";
 import {
-  contractedDailyKwh,
+  contractedTh,
   getSubscription,
   listAllSubscriptions,
   resolvePlanPayment,
   stateOf,
 } from "@/lib/plans/service";
-import { validateSettings, type PlantSettings } from "@/lib/plant-settings";
+import { validateSettings, type FarmSettings } from "@/lib/farm-settings";
 import { summarize, toSubscriptionDTO, toTxDTO, type SubscriptionDTO } from "@/lib/portfolio";
 import { TERMS_VERSION, requireCompleteProfile } from "@/lib/profile";
 import { invalidateSettings, readConfig, readSettings } from "@/lib/settings";
@@ -84,13 +83,13 @@ function profileOf(p: typeof companyProfile.$inferSelect | undefined) {
   };
 }
 
-/** Retiros pagados y en revisión de cada usuario. */
+/** Retiros enviados y en revisión de cada usuario, en sats. */
 export async function withdrawalsByUser() {
   const rows = await db
     .select({
       userId: ledgerTx.userId,
-      withdrawn: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'confirmada' then ${ledgerTx.amountCop} end), 0)`,
-      reserved: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'por_aprobar' then ${ledgerTx.amountCop} end), 0)`,
+      withdrawn: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'confirmada' then ${ledgerTx.amountSats} end), 0)`,
+      reserved: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'por_aprobar' then ${ledgerTx.amountSats} end), 0)`,
     })
     .from(ledgerTx)
     .where(eq(ledgerTx.kind, "retiro"))
@@ -104,18 +103,17 @@ export async function withdrawalsByUser() {
 }
 
 /**
- * La venta de la energía de cada cliente, redondeada hacia abajo como en su saldo. Se suma cliente por cliente
- * (no el total de una vez) para que «Se les debe» sea exactamente la suma de los saldos más los retiros por pagar.
+ * Los sats minados por cada cliente, redondeados hacia abajo como en su saldo. Se suma cliente por cliente
+ * (no el total de una vez) para que «Se les debe» sea exactamente la suma de los saldos más los retiros por enviar.
  */
-export function soldByUser(subs: readonly { userId: string }[], plans: readonly SubscriptionDTO[], solar: SolarDay, now: number) {
+export function minedByUser(subs: readonly { userId: string }[], plans: readonly SubscriptionDTO[], now: number) {
   const byUser = new Map<string, SubscriptionDTO[]>();
   subs.forEach((s, i) => byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), plans[i]]));
-  return new Map([...byUser].map(([userId, list]) => [userId, Math.floor(summarize(list, solar, now).soldCop)]));
+  return new Map([...byUser].map(([userId, list]) => [userId, Math.floor(summarize(list, now).minedSats)]));
 }
 
-/** Los comercializadores registrados, con sus planes, su energía y su saldo. Con `userId`, solo esa cuenta. */
+/** Los clientes registrados, con sus planes, sus sats y su saldo. Con `userId`, solo esa cuenta. */
 export async function listClients({ query = "", userId }: { query?: string; userId?: string } = {}) {
-  const { solar } = await readConfig();
   const now = Date.now();
   const q = query.trim();
   const matching = q
@@ -191,8 +189,8 @@ export async function listClients({ query = "", userId }: { query?: string; user
     .map((r) => {
       const plans = subs
         .filter((s) => s.userId === r.id)
-        .map((s) => toSubscriptionDTO(s, solar, now));
-      const totals = summarize(plans, solar, now);
+        .map((s) => toSubscriptionDTO(s, now));
+      const totals = summarize(plans, now);
       const w = money.get(r.id) ?? { withdrawn: 0, reserved: 0 };
       return {
         id: r.id,
@@ -201,20 +199,20 @@ export async function listClients({ query = "", userId }: { query?: string; user
         createdAt: r.createdAt.getTime(),
         profile: profileOf(profiles.get(r.id)),
         plans,
-        generatedKwh: totals.generatedKwh,
-        soldCop: Math.floor(totals.soldCop),
-        profitCop: Math.floor(totals.profitCop),
-        withdrawnCop: w.withdrawn,
-        reservedCop: w.reserved,
+        minedSats: Math.floor(totals.minedSats),
+        activeTh: totals.activeTh,
+        costCop: Math.floor(totals.costCop),
+        withdrawnSats: w.withdrawn,
+        reservedSats: w.reserved,
         openTransfers: Number(activity.get(r.id)?.openTransfers ?? 0),
         lastPaymentAt: activity.get(r.id)?.lastPaymentAt ?? null,
         deletionRequest: (() => {
           const d = requests.get(r.id);
           return d ? { id: d.id, createdAt: d.createdAt, dueAt: d.dueAt, reason: d.reason, blockers: [] as string[] } : null;
         })(),
-        balanceCop: Math.max(
+        balanceSats: Math.max(
           0,
-          Math.floor(totals.soldCop) - w.withdrawn - w.reserved,
+          Math.floor(totals.minedSats) - w.withdrawn - w.reserved,
         ),
       };
     })
@@ -248,7 +246,7 @@ export async function registerManualPayment(
   if (!target) throw new MarketError("Cliente no encontrado", 404);
   const profile = await requireCompleteProfile(input.userId).catch(() => {
     throw new MarketError(
-      "Este comercializador todavía no completa sus datos personales ni acepta los términos. Pídele que lo haga antes de registrar el pago.",
+      "Este cliente todavía no completa sus datos personales ni acepta los términos. Pídele que lo haga antes de registrar el pago.",
       412,
     );
   });
@@ -276,7 +274,7 @@ export async function registerManualPayment(
       providerId: reference,
       subscriptionId: p.subscriptionId,
       periodIndex: p.periodIndex,
-      kwh: p.kwh,
+      hashrateTh: p.hashrateTh,
     });
   } catch (err) {
     if (
@@ -315,7 +313,7 @@ export async function registerManualPayment(
   return toTxDTO(r.order);
 }
 
-/** Cierra un plan antes de tiempo (por ejemplo, si su pago fue devuelto): deja de generar energía y libera el cupo. */
+/** Cierra un plan antes de tiempo (por ejemplo, si su pago fue devuelto): deja de minar y libera su capacidad. */
 export async function closeSubscription(
   actor: Actor,
   subscriptionId: string,
@@ -358,6 +356,9 @@ export async function closeSubscription(
 
 /* ───────────── Retiros ───────────── */
 
+/** Un txid de Bitcoin: 32 bytes en hexadecimal. */
+const TXID = /^[0-9a-f]{64}$/;
+
 /** Los retiros para el admin: primero todos los que esperan el envío, después los ya revisados más recientes. */
 export async function listWithdrawals({ limit = 200 }: { limit?: number } = {}) {
   await readSettings();
@@ -393,15 +394,12 @@ export async function listWithdrawals({ limit = 200 }: { limit?: number } = {}) 
     companyName: r.companyName ?? null,
     nit: r.nit ?? null,
     customerId: r.nit || (r.docNumber ? `${r.docType ?? ""} ${r.docNumber}`.trim() : null),
-    // Quien paga necesita la cuenta completa (el usuario solo ve los últimos 4 dígitos).
-    bankAccountNumber: r.tx.bankAccountNumber ?? null,
-    signed: !!r.tx.signature,
   }));
 }
 
 /**
- * Aprueba o rechaza un retiro. Con dinero real, aprobar exige la referencia del envío que hizo el admin
- * (número del comprobante bancario o hash de la transacción); en modo de pruebas se genera una simulada.
+ * Aprueba o rechaza un retiro. Aprobar exige el txid del envío en la red de Bitcoin (64 caracteres
+ * hexadecimales); en modo de pruebas, si se deja vacío, se genera uno simulado.
  */
 export async function decideWithdrawal(
   actor: Actor,
@@ -426,13 +424,12 @@ export async function decideWithdrawal(
   if (decision === "aprobar") {
     await requireNoPaymentReview(tx.userId);
     // El saldo ya quedó apartado cuando el usuario pidió el retiro.
-    const ref = reference.trim().slice(0, 120);
-    if (!isDemoMode() && ref.length < 6) {
-      throw new MarketError(
-        "Escribe la referencia del envío: el número del comprobante bancario o el hash de la transacción.",
-      );
-    }
-    const txHash = ref || simulatedTxHash();
+    const ref = reference.trim().toLowerCase();
+    if (ref && !TXID.test(ref))
+      throw new MarketError("El txid debe tener 64 caracteres hexadecimales (0-9 y a-f). Cópialo de tu billetera o de un explorador de bloques.");
+    if (!ref && !isDemoMode())
+      throw new MarketError("Escribe el txid del envío en la red de Bitcoin (64 caracteres).");
+    const txHash = ref || simulatedBtcTxid();
     const res = await db
       .update(ledgerTx)
       .set({ status: "confirmada", txHash, confirmedAt: now })
@@ -449,8 +446,8 @@ export async function decideWithdrawal(
     await audit(
       actor,
       "aprobar_retiro",
-      `Aprobó el retiro de ${formatCop(tx.amountCop)} de ${who?.name ?? "un cliente"}`,
-      { txId, referencia: txHash },
+      `Aprobó el retiro de ${formatSats(tx.amountSats ?? 0)} de ${who?.name ?? "un cliente"}`,
+      { txId, txid: txHash },
       tx.userId,
     );
     return toTxDTO(res[0]);
@@ -467,57 +464,55 @@ export async function decideWithdrawal(
   await audit(
     actor,
     "rechazar_retiro",
-    `Rechazó el retiro de ${formatCop(tx.amountCop)} de ${who?.name ?? "un cliente"}: ${note}`,
+    `Rechazó el retiro de ${formatSats(tx.amountSats ?? 0)} de ${who?.name ?? "un cliente"}: ${note}`,
     { txId, reason: note },
     tx.userId,
   );
   return toTxDTO(res[0]);
 }
 
-/* ───────────── Planta y planes ───────────── */
+/* ───────────── Granja y planes ───────────── */
 
 const SETTING_LABELS: Record<string, string> = {
   name: "nombre",
   location: "ubicación",
-  peakKw: "potencia máxima",
-  saleCopPerKwh: "precio de venta",
+  capacityTh: "capacidad",
+  satsPerThDay: "hashprice",
   planPrices: "precios de los planes",
 };
 
-export async function updatePlantSettings(actor: Actor, next: PlantSettings) {
+export async function updateFarmSettings(actor: Actor, next: FarmSettings) {
   const current = await readSettings();
-  const problem = validateSettings(next, {
-    contractedDailyKwh: await contractedDailyKwh(),
-  });
+  const problem = validateSettings(next, { contractedTh: await contractedTh() });
   if (problem) throw new MarketError(problem);
   await db
-    .update(plant)
+    .update(farm)
     .set({
       name: next.name.trim(),
       location: next.location.trim(),
-      peakKw: next.peakKw,
-      saleCopPerKwh: next.saleCopPerKwh,
+      capacityTh: next.capacityTh,
+      satsPerThDay: next.satsPerThDay,
       planPrices: JSON.stringify(next.planPrices),
       updatedAt: Date.now(),
     })
-    .where(eq(plant.id, PLANT.id));
+    .where(eq(farm.id, FARM.id));
   invalidateSettings();
 
   const same = (k: string) =>
-    JSON.stringify(current[k as keyof PlantSettings]) ===
-    JSON.stringify(next[k as keyof PlantSettings]);
+    JSON.stringify(current[k as keyof FarmSettings]) ===
+    JSON.stringify(next[k as keyof FarmSettings]);
   const changed = Object.keys(SETTING_LABELS).filter((k) => !same(k));
   if (changed.length) {
     await audit(
       actor,
-      "config_planta",
+      "config_granja",
       `Cambió ${changed.map((k) => SETTING_LABELS[k]).join(", ")}`,
       {
         before: Object.fromEntries(
-          changed.map((k) => [k, current[k as keyof PlantSettings]]),
+          changed.map((k) => [k, current[k as keyof FarmSettings]]),
         ),
         after: Object.fromEntries(
-          changed.map((k) => [k, next[k as keyof PlantSettings]]),
+          changed.map((k) => [k, next[k as keyof FarmSettings]]),
         ),
       },
     );
@@ -528,22 +523,22 @@ export async function updatePlantSettings(actor: Actor, next: PlantSettings) {
 /* ───────────── Resumen ───────────── */
 
 export async function adminOverview() {
-  const { settings, solar, plantDailyKwh } = await readConfig();
+  const { settings, capacityTh } = await readConfig();
   const now = Date.now();
   const subs = await listAllSubscriptions();
-  const plans = subs.map((s) => toSubscriptionDTO(s, solar, now));
+  const plans = subs.map((s) => toSubscriptionDTO(s, now));
   const live = plans.filter(
     (p) => p.state === "activa" || p.state === "en_pausa",
   );
-  const totals = summarize(plans, solar, now);
+  const totals = summarize(plans, now);
   // El mismo cálculo con el que se venden los planes: incluye los que están en pausa o en conciliación
-  // mientras conservan su cupo.
-  const contracted = await contractedDailyKwh(now);
+  // mientras conservan su capacidad.
+  const contracted = await contractedTh(now);
   const [w] = await db
     .select({
       pending: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'por_aprobar' then 1 else 0 end), 0)`,
-      pendingCop: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'por_aprobar' then ${ledgerTx.amountCop} end), 0)`,
-      paidCop: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'confirmada' then ${ledgerTx.amountCop} end), 0)`,
+      pendingSats: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'por_aprobar' then ${ledgerTx.amountSats} end), 0)`,
+      paidSats: sql<number>`coalesce(sum(case when ${ledgerTx.status} = 'confirmada' then ${ledgerTx.amountSats} end), 0)`,
     })
     .from(ledgerTx)
     .where(eq(ledgerTx.kind, "retiro"));
@@ -554,7 +549,7 @@ export async function adminOverview() {
     })
     .from(ledgerTx)
     .where(and(eq(ledgerTx.kind, "plan_mes"), collectedWhere()));
-  // Transferencias que reportaron las empresas y esperan que el admin las busque en el banco.
+  // Transferencias que reportaron los clientes y esperan que el admin las busque en el banco.
   const [t] = await db
     .select({ n: sql<number>`count(*)` })
     .from(ledgerTx)
@@ -589,39 +584,41 @@ export async function adminOverview() {
     .select({ n: sql<number>`count(*)` })
     .from(dataRequest)
     .where(eq(dataRequest.status, "pendiente"));
-  const paidOut = Number(w?.paidCop ?? 0);
-  // Por cliente, igual que su saldo: lo vendido de su energía menos lo que ya se le pagó.
+  const paidOut = Number(w?.paidSats ?? 0);
+  // Por cliente, igual que su saldo: lo minado menos lo que ya se le envió.
   const money = await withdrawalsByUser();
-  const sold = soldByUser(subs, plans, solar, now);
-  let soldCop = 0;
-  let owedCop = 0;
-  for (const [userId, cop] of sold) {
-    soldCop += cop;
-    owedCop += Math.max(0, cop - (money.get(userId)?.withdrawn ?? 0));
+  const mined = minedByUser(subs, plans, now);
+  let minedSats = 0;
+  let owedSats = 0;
+  for (const [userId, sats] of mined) {
+    minedSats += sats;
+    owedSats += Math.max(0, sats - (money.get(userId)?.withdrawn ?? 0));
   }
   return {
     settings,
-    plantDailyKwh,
-    contractedDailyKwh: contracted,
-    availableDailyKwh: Math.max(0, plantDailyKwh - contracted),
+    capacityTh,
+    contractedTh: contracted,
+    availableTh: Math.max(0, capacityTh - contracted),
+    /** Hashrate minando ahora mismo y sats que suma por día */
+    activeTh: totals.activeTh,
+    dailySats: totals.dailySats,
     activePlans: plans.filter((x) => x.state === "activa").length,
     pausedPlans: plans.filter((x) => x.state === "en_pausa").length,
     clients: new Set(live.map((x) => subs.find((s) => s.id === x.id)?.userId))
       .size,
     /** Mensualidades cobradas. Incluye los pagos de prueba solo mientras el modo de pruebas está activo. */
     collectedCop: Number(p?.collectedCop ?? 0),
-    generatedKwh: totals.generatedKwh,
-    soldCop,
-    /** Lo que la empresa les debe a sus clientes: sus saldos más los retiros que esperan el envío */
-    owedCop,
-    paidOutCop: paidOut,
+    minedSats,
+    /** Los sats que eco-hash les debe a sus clientes: sus saldos más los retiros que esperan el envío */
+    owedSats,
+    paidOutSats: paidOut,
     pendingWithdrawals: Number(w?.pending ?? 0),
-    pendingWithdrawalsCop: Number(w?.pendingCop ?? 0),
+    pendingWithdrawalsSats: Number(w?.pendingSats ?? 0),
     paymentsToRefund: Number(p?.toRefund ?? 0),
     transfersToConfirm: Number(t?.n ?? 0),
     /** Devoluciones que requieren conciliación antes de que el cliente pueda retirar */
     reviewsPending: Number(r?.n ?? 0),
-    /** Planes generando cuyo mes vence en los próximos 7 días y les falta pagar meses */
+    /** Planes minando cuyo mes vence en los próximos 7 días y les falta pagar meses */
     dueSoon: plans.filter((x) => x.state === "activa" && x.paidMonths < x.months && x.paidUntil - now <= 7 * DAY_MS).length,
     monthCollectedCop: Number(m?.current ?? 0),
     previousMonthCollectedCop: Number(m?.previous ?? 0),

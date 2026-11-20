@@ -1,12 +1,12 @@
 import "server-only";
 import { client, db, isLocalFileDb } from "./index";
 import { migrate } from "./migrate";
-import { seedPlant } from "./seed";
+import { seedFarm } from "./seed";
 
 let ready: Promise<void> | null = null;
 
 /**
- * Deja la base de datos lista: aplica las migraciones que falten y crea la fila de la planta.
+ * Deja la base de datos lista: aplica las migraciones que falten y crea la fila de la granja.
  * Se llama en cada petición; el trabajo solo ocurre la primera vez en cada instancia.
  */
 export function ensureReady(): Promise<void> {
@@ -19,5 +19,5 @@ export function ensureReady(): Promise<void> {
 
 async function initialize() {
   await migrate(client, { localFile: isLocalFileDb });
-  await seedPlant(db);
+  await seedFarm(db);
 }

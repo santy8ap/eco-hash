@@ -5,7 +5,7 @@ import type { Client, InStatement } from "@libsql/client";
  * un JSON que se puede guardar y restaurar en una base nueva. Sin dependencias del servidor: lo usan la ruta de
  * descarga del admin, el script de restauración y las pruebas.
  */
-export const BACKUP_FORMAT = "x-green-energy/respaldo";
+export const BACKUP_FORMAT = "eco-hash/respaldo";
 export const BACKUP_VERSION = 1;
 
 /**
@@ -17,7 +17,7 @@ export const BACKUP_TABLES = [
   "user",
   "company_profile",
   "wallet_link",
-  "plant",
+  "farm",
   "service_setting",
   "app_meta",
   "plan_subscription",
@@ -75,7 +75,7 @@ export async function* backupChunks(client: Pick<Client, "execute">, { now = Dat
 
 /** Las migraciones aplicadas en una base (las del candado no cuentan). */
 export async function appliedMigrations(client: Pick<Client, "execute">) {
-  const { rows } = await client.execute("SELECT id FROM __solaxy_migrations WHERE id <> '__lock' ORDER BY id");
+  const { rows } = await client.execute("SELECT id FROM __ecohash_migrations WHERE id <> '__lock' ORDER BY id");
   return rows.map((r) => String(r.id));
 }
 
@@ -92,7 +92,7 @@ export function parseBackup(value: unknown): Backup {
 /**
  * Restaura un respaldo en una base que ya tiene el esquema (las mismas migraciones) y está vacía: no mezcla
  * datos con una base en uso. Todo va en una sola transacción: o queda completo, o no queda nada.
- * La fila de la planta que crea la app al arrancar se reemplaza por la del respaldo.
+ * La fila de la granja que crea la app al arrancar se reemplaza por la del respaldo.
  */
 export async function restoreBackup(client: Client, backup: Backup) {
   const migrations = await appliedMigrations(client);
@@ -102,7 +102,7 @@ export async function restoreBackup(client: Client, backup: Backup) {
     const { rows } = await client.execute(`SELECT count(*) AS n FROM ${quote(table)}`);
     if (Number(rows[0]?.n ?? 0) > 0) throw new Error(`La base de destino ya tiene datos (tabla ${table}). Restaura en una base nueva.`);
   }
-  const statements: InStatement[] = [{ sql: "DELETE FROM plant", args: [] }];
+  const statements: InStatement[] = [{ sql: "DELETE FROM farm", args: [] }];
   const counts: Record<string, number> = {};
   for (const table of BACKUP_TABLES) {
     const rows = backup.tablas[table];

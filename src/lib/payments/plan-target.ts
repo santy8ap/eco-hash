@@ -9,25 +9,15 @@ export const planTarget = {
     .regex(/^PLN-[0-9A-F]{8}$/, "Plan inválido")
     .optional(),
   expectedAmountCop: z.number().int().positive().optional(),
-  expectedSaleCopPerKwh: z.number().int().positive().optional(),
 };
 
 export interface ExpectedPayment {
   expectedAmountCop?: number;
-  expectedSaleCopPerKwh?: number;
 }
 
 /** El servidor decide el importe y exige volver a revisar si cambió lo mostrado en el resumen. */
-export function assertExpectedPayment(
-  actual: { amountCop: number; saleCopPerKwh: number },
-  expected: ExpectedPayment,
-) {
-  if (
-    (expected.expectedAmountCop != null &&
-      actual.amountCop !== expected.expectedAmountCop) ||
-    (expected.expectedSaleCopPerKwh != null &&
-      actual.saleCopPerKwh !== expected.expectedSaleCopPerKwh)
-  ) {
+export function assertExpectedPayment(actual: { amountCop: number }, expected: ExpectedPayment) {
+  if (expected.expectedAmountCop != null && actual.amountCop !== expected.expectedAmountCop) {
     throw new MarketError(
       "Los precios del plan se actualizaron. Actualiza el resumen y confirma los nuevos valores antes de pagar.",
       409,

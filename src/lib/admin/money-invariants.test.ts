@@ -5,12 +5,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { bogotaMs } from "@/lib/time";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-cuadre-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-cuadre-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 /**
  * Que el dinero cuadre: los mismos pagos y retiros, vistos desde el Resumen, Pagos, Clientes, Análisis y el panel
- * de cada comercializador, dan las mismas cifras. El escenario usa todos los medios de pago, un pago doble que se
+ * de cada cliente, dan las mismas cifras. El escenario usa todos los medios de pago, un pago doble que se
  * reembolsa, una devolución de Mercado Pago, retiros pagados, en revisión y rechazados, y pagos en el borde del
  * día y del mes en hora de Colombia.
  */
@@ -29,10 +29,11 @@ let schema: typeof import("@/lib/db/schema");
 let drizzle: typeof import("drizzle-orm");
 
 const actor = { id: "admin-cuadre", name: "Admin de prueba" };
-const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "X green Energy S.A.S.", holderId: "901234567-1" };
-const BANK = { bank: "Bancolombia", accountType: "ahorros", accountNumber: "123-456789-01" };
-const MONTH_180 = 20_880_000;
-const MONTH_360 = 40_800_000;
+const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "eco-hash S.A.S.", holderId: "901234567-1" };
+const ADDR = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
+const TXID = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16";
+const MONTH_180 = 460_000;
+const MONTH_360 = 1_112_500;
 /** Hoy: 10 de noviembre de 2026, 12:30 p. m. en Colombia. */
 const NOW = bogotaMs(2026, 11, 10, 12, 30);
 let doubleId = "";
@@ -54,7 +55,7 @@ async function mercadoPagoOrder(userId: string, planId: string) {
     expectedAmount: String(p.amountCop),
     subscriptionId: p.subscriptionId,
     periodIndex: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
   });
   return id;
 }
@@ -79,9 +80,9 @@ beforeAll(async () => {
   for (const id of ["c1", "c2", "c3", "c4", "c5", "c6", "c7"]) await createUser(id);
   await transfer.saveTransferAccount(actor, ACCOUNT);
 
-  // 20 de septiembre: c1 paga el mes 1 del Plan 180 con el pago de prueba.
+  // 20 de septiembre: c1 paga el mes 1 del Nonce con el pago de prueba.
   vi.setSystemTime(bogotaMs(2026, 9, 20, 10));
-  const { order: c1m1 } = await payWithTestPayment({ userId: "c1", planId: "p180" });
+  const { order: c1m1 } = await payWithTestPayment({ userId: "c1", planId: "h100" });
 
   // 15 de octubre: el admin registra a mano el mes 2 de c1.
   vi.setSystemTime(bogotaMs(2026, 10, 15, 9));
@@ -89,38 +90,38 @@ beforeAll(async () => {
 
   // 31 de octubre a las 10 p. m. en Colombia (en UTC ya es 1 de noviembre): c2 reporta su transferencia y el admin la confirma.
   vi.setSystemTime(bogotaMs(2026, 10, 31, 22));
-  const { order: c2 } = await transfer.reportTransfer({ userId: "c2", planId: "p360", receipt: "COMP-C2" });
+  const { order: c2 } = await transfer.reportTransfer({ userId: "c2", planId: "h250", receipt: "COMP-C2" });
   await transfer.confirmTransfer(actor, c2.id, "BCO-C2-0001");
 
   // 3 de noviembre: c4 paga con Mercado Pago; el 5, Mercado Pago devuelve el pago.
   vi.setSystemTime(bogotaMs(2026, 11, 3, 10));
-  const c4 = await mercadoPagoOrder("c4", "p180");
+  const c4 = await mercadoPagoOrder("c4", "h100");
   await orders.fulfillOrder(c4, { providerId: "mp-c4", providerStatus: "approved" });
   vi.setSystemTime(bogotaMs(2026, 11, 5, 10));
   await reversals.recordPaymentReversal(c4, "mp-c4", "refunded");
 
   // 8 de noviembre: c5 reporta una transferencia que el admin todavía no ha encontrado en el banco.
   vi.setSystemTime(bogotaMs(2026, 11, 8, 15));
-  await transfer.reportTransfer({ userId: "c5", planId: "p180", receipt: "COMP-C5" });
+  await transfer.reportTransfer({ userId: "c5", planId: "h100", receipt: "COMP-C5" });
 
   // 9 de noviembre a las 11 p. m. (en UTC ya es día 10): el admin registra a mano el pago de c6.
   vi.setSystemTime(bogotaMs(2026, 11, 9, 23));
-  await admin.registerManualPayment(actor, { userId: "c6", planId: "p180", reference: "TRANSF-C6-M1" });
+  await admin.registerManualPayment(actor, { userId: "c6", planId: "h100", reference: "TRANSF-C6-M1" });
 
   // Hoy a las 6 a. m.: c3 abre dos pagos del mismo mes en Mercado Pago y los dos se aprueban.
   vi.setSystemTime(bogotaMs(2026, 11, 10, 6));
-  const first = await mercadoPagoOrder("c3", "p180");
-  doubleId = await mercadoPagoOrder("c3", "p180");
+  const first = await mercadoPagoOrder("c3", "h100");
+  doubleId = await mercadoPagoOrder("c3", "h100");
   await orders.fulfillOrder(first, { providerId: "mp-c3-a", providerStatus: "approved" });
   await orders.fulfillOrder(doubleId, { providerId: "mp-c3-b", providerStatus: "approved" });
 
   // Al mediodía, los retiros: uno pagado, uno esperando al admin y uno rechazado.
   vi.setSystemTime(bogotaMs(2026, 11, 10, 12));
-  const paid = await withdrawals.createBankWithdrawal({ userId: "c1", amountCop: 5_000_000, destination: BANK });
-  await admin.decideWithdrawal(actor, paid.id, "aprobar", "", "ENVIO-000001");
-  await withdrawals.createBankWithdrawal({ userId: "c1", amountCop: 3_000_000, destination: BANK });
-  const rejected = await withdrawals.createBankWithdrawal({ userId: "c2", amountCop: 1_000_000, destination: BANK });
-  await admin.decideWithdrawal(actor, rejected.id, "rechazar", "La cuenta no es de la empresa");
+  const paid = await withdrawals.createBtcWithdrawal({ userId: "c1", amountSats: 100_000, address: ADDR });
+  await admin.decideWithdrawal(actor, paid.id, "aprobar", "", TXID);
+  await withdrawals.createBtcWithdrawal({ userId: "c1", amountSats: 60_000, address: ADDR });
+  const rejected = await withdrawals.createBtcWithdrawal({ userId: "c2", amountSats: 50_000, address: ADDR });
+  await admin.decideWithdrawal(actor, rejected.id, "rechazar", "La dirección no es del titular");
 
   vi.setSystemTime(NOW);
 }, 120_000);
@@ -143,11 +144,11 @@ describe("lo que se les debe a los clientes", () => {
   it("los saldos de todos los clientes más los retiros por pagar suman exactamente «Se les debe»", async () => {
     const overview = await admin.adminOverview();
     const clients = await admin.listClients();
-    const balances = clients.reduce((s, c) => s + c.balanceCop, 0);
-    const reserved = clients.reduce((s, c) => s + c.reservedCop, 0);
-    expect(reserved).toBe(3_000_000);
-    expect(overview.pendingWithdrawalsCop).toBe(reserved);
-    expect(overview.owedCop).toBe(balances + reserved);
+    const balances = clients.reduce((s, c) => s + c.balanceSats, 0);
+    const reserved = clients.reduce((s, c) => s + c.reservedSats, 0);
+    expect(reserved).toBe(60_000);
+    expect(overview.pendingWithdrawalsSats).toBe(reserved);
+    expect(overview.owedSats).toBe(balances + reserved);
   });
 
   it("a cualquier hora, con fracciones de peso de por medio, la venta se redondea hacia abajo cliente por cliente", async () => {
@@ -156,12 +157,12 @@ describe("lo que se les debe a los clientes", () => {
       const clients = await admin.listClients();
       const raw = await Promise.all(clients.map((c) => portfolio.getBalance(c.id)));
       // El escenario sirve para esto solo si redondear el total y redondear cliente por cliente dan distinto.
-      const roundedTotal = Math.floor(raw.reduce((s, b) => s + b.soldCop, 0));
-      const roundedEach = raw.reduce((s, b) => s + Math.floor(b.soldCop), 0);
+      const roundedTotal = Math.floor(raw.reduce((s, b) => s + b.minedSats, 0));
+      const roundedEach = raw.reduce((s, b) => s + Math.floor(b.minedSats), 0);
       expect(roundedTotal).toBeGreaterThan(roundedEach);
       const overview = await admin.adminOverview();
-      expect(overview.soldCop).toBe(roundedEach);
-      expect(overview.owedCop).toBe(clients.reduce((s, c) => s + c.balanceCop + c.reservedCop, 0));
+      expect(overview.minedSats).toBe(roundedEach);
+      expect(overview.owedSats).toBe(clients.reduce((s, c) => s + c.balanceSats + c.reservedSats, 0));
     } finally {
       vi.setSystemTime(NOW);
     }
@@ -170,43 +171,43 @@ describe("lo que se les debe a los clientes", () => {
   it("lo pagado en retiros es lo mismo en el Resumen, en Clientes y en Análisis; el rechazado no cuenta", async () => {
     const overview = await admin.adminOverview();
     const clients = await admin.listClients();
-    expect(overview.paidOutCop).toBe(5_000_000);
-    expect(clients.reduce((s, c) => s + c.withdrawnCop, 0)).toBe(5_000_000);
-    expect((await analytics.businessAnalytics(NOW)).totals.withdrawnCop).toBe(5_000_000);
+    expect(overview.paidOutSats).toBe(100_000);
+    expect(clients.reduce((s, c) => s + c.withdrawnSats, 0)).toBe(100_000);
+    expect((await analytics.businessAnalytics(NOW)).totals.withdrawnSats).toBe(100_000);
   });
 
   it("cada comercializador ve en su panel el mismo saldo que ve el admin", async () => {
     const clients = await admin.listClients();
     for (const c of clients) {
       const mine = await portfolio.getPortfolio(c.id);
-      expect({ id: c.id, balance: mine.balanceCop, withdrawn: mine.withdrawnCop, reserved: mine.reservedCop }).toEqual({
+      expect({ id: c.id, balance: mine.balanceSats, withdrawn: mine.withdrawnSats, reserved: mine.reservedSats }).toEqual({
         id: c.id,
-        balance: c.balanceCop,
-        withdrawn: c.withdrawnCop,
-        reserved: c.reservedCop,
+        balance: c.balanceSats,
+        withdrawn: c.withdrawnSats,
+        reserved: c.reservedSats,
       });
-      expect((await portfolio.getBalance(c.id)).balance).toBe(c.balanceCop);
+      expect((await portfolio.getBalance(c.id)).balance).toBe(c.balanceSats);
     }
   });
 
   it("el saldo nunca se redondea hacia arriba: siempre es un número entero de pesos", async () => {
     for (const c of await admin.listClients()) {
-      expect(Number.isInteger(c.balanceCop)).toBe(true);
-      expect(c.balanceCop).toBeLessThanOrEqual(c.soldCop - c.withdrawnCop - c.reservedCop);
+      expect(Number.isInteger(c.balanceSats)).toBe(true);
+      expect(c.balanceSats).toBeLessThanOrEqual(c.minedSats - c.withdrawnSats - c.reservedSats);
     }
   });
 
   it("con una devolución por conciliar, el saldo se sigue viendo pero no se puede retirar", async () => {
     const [c4] = (await admin.listClients()).filter((c) => c.id === "c4");
-    expect(c4.balanceCop).toBeGreaterThan(0);
-    await expect(withdrawals.createBankWithdrawal({ userId: "c4", amountCop: 50_000, destination: BANK })).rejects.toMatchObject({ status: 409 });
+    expect(c4.balanceSats).toBeGreaterThan(0);
+    await expect(withdrawals.createBtcWithdrawal({ userId: "c4", amountSats: 50_000, address: ADDR })).rejects.toMatchObject({ status: 409 });
     expect((await admin.adminOverview()).reviewsPending).toBe(1);
   });
 });
 
 describe("el recaudo", () => {
   it("es el mismo en el Resumen, en Pagos y en Análisis, y solo cuenta pagos confirmados", async () => {
-    // c1 mes 1 y mes 2, c2 (Plan 360), c6 y el primer pago de c3. No cuentan: la devolución de c4,
+    // c1 mes 1 y mes 2, c2 (Bloque), c6 y el primer pago de c3. No cuentan: la devolución de c4,
     // el pago doble de c3 ni la transferencia de c5 que nadie ha confirmado.
     const expected = 4 * MONTH_180 + MONTH_360;
     expect(await confirmedPlanPayments()).toEqual({ cop: expected, n: 5 });
@@ -264,7 +265,7 @@ describe("el recaudo", () => {
 
 describe("avisos repetidos", () => {
   it("dos avisos simultáneos de la misma transferencia dejan una sola orden", async () => {
-    const report = () => transfer.reportTransfer({ userId: "c7", planId: "p180", receipt: "COMP-C7" });
+    const report = () => transfer.reportTransfer({ userId: "c7", planId: "h100", receipt: "COMP-C7" });
     const results = await Promise.all([report(), report(), report()]);
     const { eq } = drizzle;
     const rows = await dbMod.db.select().from(schema.ledgerTx).where(eq(schema.ledgerTx.userId, "c7"));
@@ -295,7 +296,7 @@ describe("avisos repetidos", () => {
 
   it("dos solicitudes simultáneas para el mismo plan nuevo usan un solo borrador", async () => {
     await createUser("c8");
-    const results = await Promise.all([1, 2, 3].map(() => plans.resolvePlanPayment("c8", { planId: "p360" }, NOW)));
+    const results = await Promise.all([1, 2, 3].map(() => plans.resolvePlanPayment("c8", { planId: "h250" }, NOW)));
     expect(new Set(results.map((r) => r.subscriptionId)).size).toBe(1);
   });
 });

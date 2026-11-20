@@ -8,8 +8,8 @@ const NOW = Date.UTC(2026, 10, 12, 15);
 function sub(over: Partial<SubscriptionDTO>): SubscriptionDTO {
   return {
     id: "PLN-00000001",
-    planId: "p180",
-    planName: "Plan 180",
+    planId: "h100",
+    planName: "Nonce",
     totalKwh: 180_000,
     months: 3,
     dailyKwh: 2_000,
@@ -34,7 +34,7 @@ const renewals = (subscriptions: SubscriptionDTO[]) => accountNotices(portfolio(
 describe("avisos para renovar un plan", () => {
   it("con todos los meses pagados y a una semana de terminar, invita a renovar el mismo plan", () => {
     const [n] = renewals([sub({})]);
-    expect(n).toMatchObject({ title: "Tu Plan 180 termina pronto", href: "/comprar?plan=p180" });
+    expect(n).toMatchObject({ title: "Tu Nonce termina pronto", href: "/comprar?plan=h100" });
   });
 
   it("todavía lejos del final, o con meses por pagar, no hay aviso de renovación", () => {
@@ -43,7 +43,7 @@ describe("avisos para renovar un plan", () => {
   });
 
   it("un plan que terminó hace poco invita a renovarlo; uno de hace meses, no", () => {
-    expect(renewals([sub({ state: "completada", paidUntil: NOW - 3 * DAY })])[0]).toMatchObject({ title: "Tu Plan 180 terminó", href: "/comprar?plan=p180" });
+    expect(renewals([sub({ state: "completada", paidUntil: NOW - 3 * DAY })])[0]).toMatchObject({ title: "Tu Nonce terminó", href: "/comprar?plan=h100" });
     expect(renewals([sub({ state: "completada", paidUntil: NOW - 60 * DAY })])).toEqual([]);
   });
 

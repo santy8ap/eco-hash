@@ -42,11 +42,11 @@ describe("límites por pago de Mercado Pago", () => {
 
   it("decide qué se puede pagar con Mercado Pago según el monto del mes", () => {
     const l = { cardMaxCop: 50_000_000, pseMaxCop: 340_000_000 };
-    // Plan 180 y Plan 360: tarjeta o PSE.
+    // Nonce y Bloque: tarjeta o PSE.
     expect(mercadoPagoFor(20_880_000, l)).toEqual({ available: true, cards: true });
     expect(mercadoPagoFor(40_800_000, l)).toEqual({ available: true, cards: true });
     expect(mercadoPagoFor(50_000_000, l)).toEqual({ available: true, cards: true });
-    // Plan 540 y Plan 720: solo PSE.
+    // Cadena y Génesis: solo PSE.
     expect(mercadoPagoFor(59_400_000, l)).toEqual({ available: true, cards: false });
     expect(mercadoPagoFor(76_800_000, l)).toEqual({ available: true, cards: false });
     // Más que el tope de PSE: Mercado Pago no lo recibe.

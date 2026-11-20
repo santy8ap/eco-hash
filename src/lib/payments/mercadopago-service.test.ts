@@ -120,8 +120,8 @@ function notification(paymentId: number | string, secret = SECRET) {
   };
 }
 
-/** Pago mensual del Plan 180: 60.000 kWh × $ 348. */
-const MONTH_180 = 20_880_000;
+/** Pago mensual del Nonce: 60.000 kWh × $ 348. */
+const MONTH_180 = 460_000;
 
 async function periodsOf(subscriptionId: string | null) {
   return dbMod.db
@@ -138,7 +138,7 @@ async function orderRow(orderId: string) {
 }
 const order = (
   userId: string,
-  target: { planId?: string; subscriptionId?: string } = { planId: "p180" },
+  target: { planId?: string; subscriptionId?: string } = { planId: "h100" },
 ) =>
   svc.createMercadoPagoOrder(
     { userId, email: `${userId}@empresa.co`, ...target },
@@ -173,7 +173,7 @@ describe("orden de un mes con Mercado Pago", () => {
       method: "mercadopago",
       kind: "plan_mes",
       amountCop: MONTH_180,
-      kwh: 60_000,
+      hashrateTh: 100,
       periodIndex: 1,
       expectedAmount: String(MONTH_180),
     });
@@ -185,7 +185,7 @@ describe("orden de un mes con Mercado Pago", () => {
     };
     expect(pref.external_reference).toBe(o.orderId);
     expect(pref.items[0]).toMatchObject({
-      title: "Plan 180 · mes 1 de 3 · X green Energy",
+      title: "Plan Nonce (100 TH/s) · mes 1 de 3 · eco-hash",
       unit_price: MONTH_180,
       currency_id: "COP",
     });
@@ -193,7 +193,7 @@ describe("orden de un mes con Mercado Pago", () => {
       new RegExp(`/pagos/resultado\\?ref=${o.orderId}$`),
     );
     expect(o.checkoutUrl).toMatch(/^https:\/\/mp\.falso\/checkout\?pref=/);
-    // Todavía no se paga: el plan es un borrador que no ocupa cupo ni se muestra.
+    // Todavía no se paga: el plan es un borrador que no ocupa capacidad ni se muestra.
     expect(await plans.listSubscriptions("u1")).toHaveLength(0);
   });
 
@@ -216,7 +216,7 @@ describe("orden de un mes con Mercado Pago", () => {
         },
       })) as typeof fetch;
     const o = await svc.createMercadoPagoOrder(
-      { userId: "u2", email: "a@b.co", planId: "p180" },
+      { userId: "u2", email: "a@b.co", planId: "h100" },
       { fetch: testFetch },
     );
     vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", TOKEN);
@@ -243,7 +243,7 @@ describe("orden de un mes con Mercado Pago", () => {
       });
     }) as typeof fetch;
     const o = await svc.createMercadoPagoOrder(
-      { userId: "u2", email: "a@b.co", planId: "p180" },
+      { userId: "u2", email: "a@b.co", planId: "h100" },
       { fetch: testUserFetch },
     );
     vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", TOKEN);
@@ -262,27 +262,37 @@ describe("topes de Mercado Pago", () => {
 
   it("hasta el tope de las tarjetas ofrece tarjeta y PSE", async () => {
     await createUser("tope-1");
-    await order("tope-1", { planId: "p360" });
+    await order("tope-1", { planId: "h250" });
     const body = mp.preferences.at(-1)!.body as { payment_methods: { excluded_payment_types: { id: string }[] } };
     expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm"]);
   });
 
-  it("el Plan 720 ($ 76,8 millones) pasa el tope de las tarjetas: la preferencia solo deja PSE", async () => {
+  it("un mes que pasa el tope de las tarjetas (el Génesis, $ 4,2 millones, con un tope de $ 3 millones) solo deja PSE", async () => {
     await createUser("tope-2");
-    const o = await order("tope-2", { planId: "p720" });
-    expect(o.amountCop).toBe(76_800_000);
-    const body = mp.preferences.at(-1)!.body as { payment_methods: { excluded_payment_types: { id: string }[] } };
-    expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm", "credit_card", "debit_card", "prepaid_card"]);
+    mp.methods = [
+      { id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 340_000_000 },
+      { id: "visa", payment_type_id: "credit_card", status: "active", max_allowed_amount: 3_000_000 },
+    ];
+    delete limitsCache.__iweMpLimits;
+    try {
+      const o = await order("tope-2", { planId: "h1000" });
+      expect(o.amountCop).toBe(4_200_000);
+      const body = mp.preferences.at(-1)!.body as { payment_methods: { excluded_payment_types: { id: string }[] } };
+      expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm", "credit_card", "debit_card", "prepaid_card"]);
+    } finally {
+      mp.methods = COLOMBIA_METHODS;
+      delete limitsCache.__iweMpLimits;
+    }
   });
 
   it("si el mes cuesta más que el tope de PSE, no se crea la orden y se explica cómo pagar", async () => {
     await createUser("tope-3");
     const before = mp.preferences.length;
     const rows = async () => (await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "tope-3"))).length;
-    mp.methods = [{ id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 10_000_000 }];
+    mp.methods = [{ id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 400_000 }];
     delete limitsCache.__iweMpLimits;
     try {
-      await expect(order("tope-3", { planId: "p180" })).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/Mercado Pago recibe hasta \$ 10\.000\.000/) });
+      await expect(order("tope-3", { planId: "h100" })).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/Mercado Pago recibe hasta \$ 400\.000/) });
       expect(mp.preferences.length).toBe(before);
       expect(await rows()).toBe(0);
     } finally {
@@ -315,7 +325,8 @@ describe("confirmación del pago", () => {
     expect(periods).toHaveLength(1);
     expect(periods[0]).toMatchObject({
       idx: 1,
-      kwh: 60_000,
+      hashrateTh: 100,
+      satsPerThDay: 42,
       amountCop: MONTH_180,
       txId: o.orderId,
     });
@@ -323,10 +334,9 @@ describe("confirmación del pago", () => {
     expect(periods[0].endsAt - periods[0].startsAt).toBe(30 * 86_400_000);
     const [sub] = await plans.listSubscriptions("u4");
     expect(sub).toMatchObject({
-      planId: "p180",
-      priceCopPerKwh: 348,
-      saleCopPerKwh: 400,
-      dailyKwh: 2000,
+      planId: "h100",
+      priceCopPerThMonth: 4600,
+      hashrateTh: 100,
     });
     expect(plans.stateOf(sub, Date.now())).toBe("activa");
   });
@@ -470,10 +480,9 @@ describe("confirmación del pago", () => {
     expect(
       (await getPortfolio("u10", cut + 1)).subscriptions[0].paidUntil,
     ).toBe(cut);
-    const { generatedKwh } = await import("@/lib/energy/plan-math");
-    const solar = (await settings.readConfig()).solar;
-    expect(generatedKwh(solar, sub.dailyKwh, periods, cut + 2 * 86400000)).toBe(
-      generatedKwh(solar, sub.dailyKwh, periods, cut + 86400000),
+    const { minedSats } = await import("@/lib/mining/plan-math");
+    expect(minedSats(sub.hashrateTh, periods, cut + 2 * 86400000)).toBe(
+      minedSats(sub.hashrateTh, periods, cut + 86400000),
     );
     const reversal = await import("@/lib/payments/reversals");
     await expect(reversal.requireNoPaymentReview("u10")).rejects.toMatchObject({
@@ -537,7 +546,7 @@ describe("confirmación del pago", () => {
   });
 });
 
-describe("meses siguientes y cupo de la planta", () => {
+describe("meses siguientes y capacidad de la granja", () => {
   it("el mes 2 se paga con el plan del usuario y empieza cuando termina el mes 1", async () => {
     const first = await order("u12");
     const p1 = pay(first.orderId, MONTH_180, "approved");
@@ -629,11 +638,10 @@ describe("meses siguientes y cupo de la planta", () => {
     });
   });
 
-  it("si la planta se queda sin cupo entre la orden y el pago, el pago queda por reembolsar", async () => {
-    // Una planta en la que solo cabe un Plan 180 más (2.000 kWh al día) además de lo ya contratado.
-    const used = await plans.contractedDailyKwh();
-    const peakKw = ((used + 2500) * Math.PI) / (2 * 13);
-    await dbMod.db.update(schema.plant).set({ peakKw });
+  it("si la granja se queda sin capacidad entre la orden y el pago, el pago queda por reembolsar", async () => {
+    // Una granja en la que solo cabe un Nonce más (100 TH/s) además de lo ya contratado.
+    const used = await plans.contractedTh();
+    await dbMod.db.update(schema.farm).set({ capacityTh: used + 150 });
     settings.invalidateSettings();
 
     const a = await order("u15");
@@ -649,10 +657,10 @@ describe("meses siguientes y cupo de la planta", () => {
     expect((await orderRow(a.orderId)).status).toBe("confirmada");
     const late = await orderRow(b.orderId);
     expect(late.status).toBe("por_reembolsar");
-    expect(late.note).toMatch(/sin cupo/);
+    expect(late.note).toMatch(/sin capacidad/);
     // Y ya no se pueden crear órdenes nuevas para un plan que no cabe.
     await expect(order("u14")).rejects.toMatchObject({ status: 409 });
-    // Quien ya tiene su plan sí puede pagar el mes siguiente: su cupo está apartado.
+    // Quien ya tiene su plan sí puede pagar el mes siguiente: su capacidad está apartada.
     const [mine] = await plans.listSubscriptions("u15");
     await expect(
       order("u15", { subscriptionId: mine.id }),

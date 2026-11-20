@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DAY_MS, bogotaMs } from "@/lib/time";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-admin-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-admin-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let admin: typeof import("@/lib/admin/service");
@@ -36,21 +36,22 @@ afterAll(() => {
 
 describe("pago manual (transferencia bancaria)", () => {
   it("exige la referencia del comprobante", async () => {
-    await expect(admin.registerManualPayment(actor, { userId: "a1", planId: "p360", reference: " " })).rejects.toThrow(/referencia/i);
+    await expect(admin.registerManualPayment(actor, { userId: "a1", planId: "h250", reference: " " })).rejects.toThrow(/referencia/i);
   });
 
   it("activa el mes, queda como pago real y deja constancia en la bitácora", async () => {
-    const tx = await admin.registerManualPayment(actor, { userId: "a1", planId: "p360", reference: "TRANSF-0001" });
-    expect(tx).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "manual", amountCop: 40_800_000, kwh: 120_000, periodIndex: 1 });
+    const tx = await admin.registerManualPayment(actor, { userId: "a1", planId: "h250", reference: "TRANSF-0001" });
+    expect(tx).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "manual", amountCop: 1_112_500, hashrateTh: 250, periodIndex: 1 });
     const [sub] = await plans.listSubscriptions("a1");
-    expect(sub).toMatchObject({ planId: "p360", dailyKwh: 4000, priceCopPerKwh: 340 });
+    expect(sub).toMatchObject({ planId: "h250", hashrateTh: 250, priceCopPerThMonth: 4450 });
+    expect(sub.periods[0]).toMatchObject({ hashrateTh: 250, satsPerThDay: 42, amountCop: 1_112_500 });
     const [entry] = await admin.listAudit(1);
     expect(entry).toMatchObject({ action: "pago_manual", targetUserId: "a1" });
-    expect(entry.summary).toMatch(/Textiles del Valle.*Plan 360, mes 1 de 3.*TRANSF-0001/);
+    expect(entry.summary).toMatch(/Textiles del Valle.*Bloque, mes 1 de 3.*TRANSF-0001/);
   });
 
   it("una referencia no se puede registrar dos veces", async () => {
-    await expect(admin.registerManualPayment(actor, { userId: "a2", planId: "p180", reference: "TRANSF-0001" })).rejects.toMatchObject({ status: 409 });
+    await expect(admin.registerManualPayment(actor, { userId: "a2", planId: "h100", reference: "TRANSF-0001" })).rejects.toMatchObject({ status: 409 });
     expect(await plans.listSubscriptions("a2")).toHaveLength(0);
   });
 
@@ -60,27 +61,27 @@ describe("pago manual (transferencia bancaria)", () => {
     expect(tx).toMatchObject({ periodIndex: 2, subscriptionId: sub.id });
   });
 
-  it("no se registra para un comercializador que no ha completado sus datos personales", async () => {
-    await expect(admin.registerManualPayment(actor, { userId: "nuevo", planId: "p180", reference: "TRANSF-0003" })).rejects.toMatchObject({ status: 412 });
+  it("no se registra para un cliente que no ha completado sus datos personales", async () => {
+    await expect(admin.registerManualPayment(actor, { userId: "nuevo", planId: "h100", reference: "TRANSF-0003" })).rejects.toMatchObject({ status: 412 });
   });
 });
 
 describe("cerrar un plan", () => {
-  it("deja de generar energía en ese instante, libera el cupo y no admite más pagos", async () => {
-    await pay.payWithTestPayment({ userId: "a2", planId: "p720" });
+  it("deja de minar en ese instante, libera su capacidad y no admite más pagos", async () => {
+    await pay.payWithTestPayment({ userId: "a2", planId: "h1000" });
     const [sub] = await plans.listSubscriptions("a2");
-    const before = await plans.contractedDailyKwh();
+    const before = await plans.contractedTh();
     vi.setSystemTime(T0 + 5 * DAY_MS);
     await expect(admin.closeSubscription(actor, sub.id, "")).rejects.toThrow(/motivo/);
     await admin.closeSubscription(actor, sub.id, "El pago fue devuelto por el banco");
-    expect(await plans.contractedDailyKwh()).toBe(before - 8000);
+    expect(await plans.contractedTh()).toBe(before - 1000);
 
     vi.setSystemTime(T0 + 20 * DAY_MS);
     const p = await portfolio.getPortfolio("a2");
     expect(p.subscriptions[0].state).toBe("cancelada");
-    // Generó 5 días (40.000 kWh) y ahí se detuvo.
-    expect(p.generatedKwh).toBeCloseTo(40_000, 4);
-    expect(p.dailyKwh).toBe(0);
+    // Minó 5 días (210.000 sats) y ahí se detuvo.
+    expect(p.minedSats).toBeCloseTo(210_000, 4);
+    expect(p.activeTh).toBe(0);
     await expect(pay.payWithTestPayment({ userId: "a2", subscriptionId: sub.id })).rejects.toMatchObject({ status: 409 });
     await expect(admin.closeSubscription(actor, sub.id, "otra vez")).rejects.toMatchObject({ status: 409 });
     vi.setSystemTime(T0);
@@ -89,17 +90,18 @@ describe("cerrar un plan", () => {
 });
 
 describe("clientes y resumen", () => {
-  it("lista las empresas con sus planes, su energía y su saldo", async () => {
+  it("lista los clientes con sus planes, sus sats y su saldo", async () => {
     // Seis días después del primer pago (el plan de a2 se cerró al quinto día).
     vi.setSystemTime(T0 + 6 * DAY_MS);
     const clients = await admin.listClients();
     const a1 = clients.find((c) => c.id === "a1")!;
     expect(a1.profile).toMatchObject({ companyName: "Textiles del Valle S.A.S.", nit: "900123456-8", termsCurrent: true });
     expect(a1.plans).toHaveLength(1);
-    expect(a1.plans[0]).toMatchObject({ planName: "Plan 360", state: "activa", paidMonths: 2 });
-    expect(a1.generatedKwh).toBeCloseTo(24_000, 4);
-    expect(a1.balanceCop).toBe(9_600_000);
-    expect(clients.find((c) => c.id === "nuevo")).toMatchObject({ profile: null, plans: [], balanceCop: 0 });
+    expect(a1.plans[0]).toMatchObject({ planName: "Bloque", state: "activa", paidMonths: 2 });
+    expect(a1.minedSats).toBe(63_000);
+    expect(a1.activeTh).toBe(250);
+    expect(a1.balanceSats).toBe(63_000);
+    expect(clients.find((c) => c.id === "nuevo")).toMatchObject({ profile: null, plans: [], balanceSats: 0 });
     // Primero quienes tienen planes.
     expect(clients[0].plans.length).toBeGreaterThan(0);
   });
@@ -110,64 +112,73 @@ describe("clientes y resumen", () => {
     expect(await admin.listClients({ query: "no-existe-xyz" })).toEqual([]);
   });
 
-  it("el resumen muestra el cupo, lo cobrado y lo que se les debe a los clientes", async () => {
+  it("el resumen muestra la capacidad, lo cobrado y los sats que se les deben a los clientes", async () => {
     const o = await admin.adminOverview();
-    expect(o.plantDailyKwh).toBeCloseTo((8000 * 13 * 2) / Math.PI, 6);
-    expect(o).toMatchObject({ contractedDailyKwh: 4000, activePlans: 1, clients: 1, pendingWithdrawals: 0 });
-    expect(o.availableDailyKwh).toBeCloseTo(o.plantDailyKwh - 4000, 6);
-    // Dos meses del Plan 360 (transferencias registradas) y uno del Plan 720 (pago de prueba).
-    expect(o.collectedCop).toBe(40_800_000 * 2 + 76_800_000);
+    expect(o).toMatchObject({ capacityTh: 30_000, contractedTh: 250, availableTh: 29_750, activeTh: 250, dailySats: 10_500, activePlans: 1, clients: 1, pendingWithdrawals: 0 });
+    // Dos meses del Bloque (transferencias registradas) y uno del Génesis (pago de prueba).
+    expect(o.collectedCop).toBe(1_112_500 * 2 + 4_200_000);
     // Con dinero real, lo cobrado no cuenta los pagos de prueba.
     vi.stubEnv("DEMO_MODE", "false");
-    expect((await admin.adminOverview()).collectedCop).toBe(40_800_000 * 2);
+    expect((await admin.adminOverview()).collectedCop).toBe(1_112_500 * 2);
     vi.stubEnv("DEMO_MODE", "");
-    // a1: 24.000 kWh; a2: 40.000 kWh antes del cierre. Todo a $ 400.
-    expect(o.owedCop).toBe(64_000 * 400);
+    // a1: 6 días × 10.500 sats; a2: 5 días × 42.000 sats antes del cierre.
+    expect(o.owedSats).toBe(63_000 + 210_000);
+    expect(o.minedSats).toBe(273_000);
     vi.setSystemTime(T0);
   });
 });
 
-describe("configuración de la planta y de los planes", () => {
-  it("valida los precios: un plan debe costar menos que el precio de venta", async () => {
+describe("configuración de la granja y de los planes", () => {
+  it("valida el nombre, los precios y el hashprice", async () => {
     const current = await settings.readSettings();
-    await expect(admin.updatePlantSettings(actor, { ...current, planPrices: { ...current.planPrices, p180: 400 } })).rejects.toThrow(/menor que el precio de venta/);
-    await expect(admin.updatePlantSettings(actor, { ...current, saleCopPerKwh: 340 })).rejects.toThrow(/menor que el precio de venta/);
-    await expect(admin.updatePlantSettings(actor, { ...current, name: "" })).rejects.toThrow(/nombre/);
+    await expect(admin.updateFarmSettings(actor, { ...current, name: "" })).rejects.toThrow(/nombre/);
+    await expect(admin.updateFarmSettings(actor, { ...current, planPrices: { ...current.planPrices, h100: 50 } })).rejects.toThrow(/entre \$ 100/);
+    await expect(admin.updateFarmSettings(actor, { ...current, satsPerThDay: 0 })).rejects.toThrow(/hashprice/);
+    await expect(admin.updateFarmSettings(actor, { ...current, satsPerThDay: 42.25 })).rejects.toThrow(/un decimal/);
   });
 
-  it("no deja bajar la potencia por debajo de lo ya contratado", async () => {
+  it("no deja bajar la capacidad por debajo de lo ya contratado", async () => {
     const current = await settings.readSettings();
-    await expect(admin.updatePlantSettings(actor, { ...current, peakKw: 400 })).rejects.toThrow(/ya contratados/);
+    await expect(admin.updateFarmSettings(actor, { ...current, capacityTh: 200 })).rejects.toThrow(/ya contratados/);
+    await expect(admin.updateFarmSettings(actor, { ...current, capacityTh: 50 })).rejects.toThrow(/entre 100/);
   });
 
-  it("un precio nuevo aplica a los planes nuevos; los ya comprados conservan sus condiciones", async () => {
+  it("un precio o un hashprice nuevo aplica a los meses que se activen después; lo ya pagado conserva sus condiciones", async () => {
+    vi.setSystemTime(T0 + 6 * DAY_MS);
+    const minedBefore = (await portfolio.getPortfolio("a1")).minedSats;
     const current = await settings.readSettings();
-    const next = await admin.updatePlantSettings(actor, { ...current, saleCopPerKwh: 420, planPrices: { ...current.planPrices, p180: 350 } });
-    expect(next).toMatchObject({ saleCopPerKwh: 420, planPrices: { p720: 320, p540: 330, p360: 340, p180: 350 } });
+    const next = await admin.updateFarmSettings(actor, { ...current, satsPerThDay: 45, planPrices: { ...current.planPrices, h100: 4800 } });
+    expect(next).toMatchObject({ satsPerThDay: 45, planPrices: { h1000: 4200, h500: 4300, h250: 4450, h100: 4800 } });
     const catalog = await plans.getCatalog();
-    expect(catalog.plans.find((p) => p.id === "p180")).toMatchObject({ priceCopPerKwh: 350, saleCopPerKwh: 420, monthlyCop: 21_000_000, profitPerKwhCop: 70 });
+    expect(catalog.plans.find((p) => p.id === "h100")).toMatchObject({ priceCopPerThMonth: 4800, satsPerThDay: 45, monthlyCop: 480_000, dailySats: 4_500 });
+    // a1 ya tenía sus dos meses pagados a 42 sats: el cambio no toca lo que ya mina.
+    expect((await portfolio.getPortfolio("a1")).minedSats).toBe(minedBefore);
+    expect((await plans.listSubscriptions("a1"))[0].periods.map((x) => x.satsPerThDay)).toEqual([42, 42]);
+    vi.setSystemTime(T0);
 
-    await pay.payWithTestPayment({ userId: "a3", planId: "p180" });
-    expect((await plans.listSubscriptions("a3"))[0]).toMatchObject({ priceCopPerKwh: 350, saleCopPerKwh: 420 });
-    expect((await plans.listSubscriptions("a1"))[0]).toMatchObject({ priceCopPerKwh: 340, saleCopPerKwh: 400 });
-    const entry = (await admin.listAudit(20)).find((e) => e.action === "config_planta");
-    expect(entry?.summary).toMatch(/precio de venta.*precios de los planes/);
+    await pay.payWithTestPayment({ userId: "a3", planId: "h100" });
+    const [a3] = await plans.listSubscriptions("a3");
+    expect(a3).toMatchObject({ priceCopPerThMonth: 4800 });
+    expect(a3.periods[0].satsPerThDay).toBe(45);
+    expect((await plans.listSubscriptions("a1"))[0]).toMatchObject({ priceCopPerThMonth: 4450 });
+    const entry = (await admin.listAudit(20)).find((e) => e.action === "config_granja");
+    expect(entry?.summary).toMatch(/hashprice.*precios de los planes/);
   });
 });
 
-describe("comercializador con datos personales", () => {
+describe("cliente con datos personales", () => {
   it("puede comprar, buscarse por identidad y solicitar un retiro con su nombre registrado", async () => {
     const { saveProfile } = await import("@/lib/profile");
-    const { createBankWithdrawal } = await import("@/lib/withdrawals");
+    const { createBtcWithdrawal } = await import("@/lib/withdrawals");
     await createUser("personal", { profile: false, name: "Alias de Google" });
     await saveProfile("personal", { fullName: "Mariana Restrepo", docType: "CC", docNumber: "1023456789", phone: "3001234567", city: "Medellín", acceptTerms: true });
-    const tx = await admin.registerManualPayment(actor, { userId: "personal", planId: "p180", reference: "TRANSF-PERSONAL-1" });
+    const tx = await admin.registerManualPayment(actor, { userId: "personal", planId: "h100", reference: "TRANSF-PERSONAL-1" });
     expect(tx).toMatchObject({ kind: "plan_mes", status: "confirmada", periodIndex: 1 });
     expect((await admin.listClients({ query: "Mariana Restrepo" })).map((c) => c.id)).toEqual(["personal"]);
     expect((await admin.listClients({ query: "1023456789" })).map((c) => c.id)).toEqual(["personal"]);
     try {
-      vi.setSystemTime(T0 + 10 * DAY_MS);
-      const w = await createBankWithdrawal({ userId: "personal", amountCop: 100_000, destination: { bank: "Bancolombia", accountType: "ahorros", accountNumber: "12345678901" } });
+      vi.setSystemTime(T0 + 15 * DAY_MS);
+      const w = await createBtcWithdrawal({ userId: "personal", amountSats: 60_000, address: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" });
       expect((await admin.listWithdrawals()).find((item) => item.id === w.id)).toMatchObject({ fullName: "Mariana Restrepo", userName: "Alias de Google", companyName: "", nit: "", status: "por_aprobar" });
     } finally {
       vi.setSystemTime(T0);
@@ -186,6 +197,7 @@ describe("retiros para el admin", () => {
       kind: "retiro" as const,
       status,
       amountCop: 200_000,
+      amountSats: 50_000,
       createdAt: T0 - daysAgo * DAY_MS,
     });
     await db.insert(ledgerTx).values([retiro("RET-VIEJO-PENDIENTE", "por_aprobar", 40), retiro("RET-NUEVO-PAGADO", "confirmada", 1), retiro("RET-NUEVO-RECHAZADO", "rechazada", 2)]);
@@ -199,20 +211,20 @@ describe("retiros para el admin", () => {
 
 // Al final del archivo: este plan nuevo no debe cambiar los totales que comprueban las pruebas anteriores.
 describe("cerrar un plan en revisión", () => {
-  it("también se puede cerrar un plan con una devolución por conciliar: deja de generar y libera el cupo", async () => {
+  it("también se puede cerrar un plan con una devolución por conciliar: deja de minar y libera su capacidad", async () => {
     const { db } = await import("@/lib/db");
     const { paymentReview } = await import("@/lib/db/schema");
     await createUser("revision", { name: "Pago Devuelto S.A.S." });
-    const { order } = await pay.payWithTestPayment({ userId: "revision", planId: "p180" });
+    const { order } = await pay.payWithTestPayment({ userId: "revision", planId: "h100" });
     // La pasarela devolvió el pago: el plan queda en revisión hasta conciliar.
     await db.insert(paymentReview).values({ paymentId: order.id, userId: "revision", subscriptionId: order.subscriptionId!, occurredAt: T0 + DAY_MS, reason: "charged_back" });
     vi.setSystemTime(T0 + 2 * DAY_MS);
     try {
       const [sub] = await plans.listSubscriptions("revision");
       expect(plans.stateOf(sub, Date.now())).toBe("en_revision");
-      const before = await plans.contractedDailyKwh();
+      const before = await plans.contractedTh();
       await admin.closeSubscription(actor, sub.id, "El banco desconoció el pago");
-      expect(await plans.contractedDailyKwh()).toBe(before - 2000);
+      expect(await plans.contractedTh()).toBe(before - 100);
       await expect(admin.closeSubscription(actor, sub.id, "otra vez")).rejects.toMatchObject({ status: 409 });
     } finally {
       vi.setSystemTime(T0);

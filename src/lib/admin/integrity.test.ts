@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DAY_MS, HOUR_MS, bogotaMs } from "@/lib/time";
 import { createUser, fundUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-cuadre-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-cuadre-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let integrity: typeof import("./integrity");
@@ -14,7 +14,7 @@ let schema: typeof import("@/lib/db/schema");
 let drizzle: typeof import("drizzle-orm");
 let withdrawals: typeof import("@/lib/withdrawals");
 const T0 = bogotaMs(2026, 11, 19, 12, 0);
-const BANK = { bank: "Bancolombia", accountType: "ahorros", accountNumber: "123-456789-01" };
+const ADDR = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
 
 async function check(id: string, now = Date.now()) {
   const report = await integrity.checkIntegrity(now);
@@ -23,7 +23,7 @@ async function check(id: string, now = Date.now()) {
 
 /** Una fila de ledger_tx escrita a mano: los casos que el código nunca debería producir. */
 async function tx(values: Partial<typeof import("@/lib/db/schema").ledgerTx.$inferInsert> & { id: string; userId: string }) {
-  await dbMod.db.insert(schema.ledgerTx).values({ kind: "plan_mes", status: "confirmada", amountCop: 20_880_000, asset: "COP", createdAt: Date.now(), ...values });
+  await dbMod.db.insert(schema.ledgerTx).values({ kind: "plan_mes", status: "confirmada", amountCop: 4_200_000, asset: "COP", createdAt: Date.now(), ...values });
 }
 
 beforeAll(async () => {
@@ -45,19 +45,19 @@ afterAll(() => {
 });
 
 describe("el cuadre de los números", () => {
-  it("con datos sanos, todo cuadra: pagos con su mes, retiros dentro del saldo y la energía dentro de la planta", async () => {
-    await withdrawals.createBankWithdrawal({ userId: "sano", amountCop: 1_000_000, destination: BANK });
+  it("con datos sanos, todo cuadra: pagos con su mes, retiros dentro del saldo y el hashrate dentro de la granja", async () => {
+    await withdrawals.createBtcWithdrawal({ userId: "sano", amountSats: 100_000, address: ADDR });
     const report = await integrity.checkIntegrity();
     expect(report.checks.filter((c) => !c.ok)).toEqual([]);
     expect(report).toMatchObject({ errors: 0, warnings: 0 });
-    expect(report.checks.find((c) => c.id === "cupo")?.detail).toMatch(/Contratado 14\.000 de .* kWh al día/);
+    expect(report.checks.find((c) => c.id === "capacidad")?.detail).toBe("Contratado 7 PH/s de 30 PH/s.");
   });
 
-  it("un pago confirmado sin su mes de energía es un error, con el enlace a la orden", async () => {
-    await tx({ id: "XGE-HUERFANO", userId: "huerfano" });
+  it("un pago confirmado sin su mes de minería es un error, con el enlace a la orden", async () => {
+    await tx({ id: "ECH-HUERFANO", userId: "huerfano" });
     const c = await check("pago-sin-mes");
     expect(c).toMatchObject({ ok: false, level: "error", count: 1 });
-    expect(c.items[0]).toEqual({ label: expect.stringContaining("XGE-HUERFANO"), href: "/admin/pagos?q=XGE-HUERFANO" });
+    expect(c.items[0]).toEqual({ label: expect.stringContaining("ECH-HUERFANO"), href: "/admin/pagos?q=ECH-HUERFANO" });
   });
 
   it("un mes cuyo pago no está confirmado es un error, salvo que sea una devolución ya registrada", async () => {
@@ -80,12 +80,12 @@ describe("el cuadre de los números", () => {
       .from(schema.planPeriod)
       .innerJoin(schema.planSubscription, drizzle.eq(schema.planSubscription.id, schema.planPeriod.subscriptionId))
       .where(drizzle.eq(schema.planSubscription.userId, "doble"));
-    await tx({ id: "XGE-DOBLE-2", userId: "doble", subscriptionId: p1.plan_period.subscriptionId, periodIndex: 2 });
+    await tx({ id: "ECH-DOBLE-2", userId: "doble", subscriptionId: p1.plan_period.subscriptionId, periodIndex: 2 });
     await dbMod.db.insert(schema.planPeriod).values({
       ...p1.plan_period,
       id: "periodo-doble-2",
       idx: 2,
-      txId: "XGE-DOBLE-2",
+      txId: "ECH-DOBLE-2",
       startsAt: p1.plan_period.startsAt + 5 * DAY_MS,
       endsAt: p1.plan_period.endsAt + 5 * DAY_MS,
     });
@@ -93,38 +93,38 @@ describe("el cuadre de los números", () => {
   });
 
   it("un saldo en negativo es un error, salvo en una cuenta con una devolución por conciliar", async () => {
-    await tx({ id: "RET-DE-MAS", userId: "negativo", kind: "retiro", amountCop: 90_000_000 });
+    await tx({ id: "RET-DE-MAS", userId: "negativo", kind: "retiro", amountCop: 0, amountSats: 9_000_000 });
     const c = await check("saldo-negativo");
     expect(c).toMatchObject({ ok: false, count: 1 });
-    expect(c.items[0]).toEqual({ label: expect.stringMatching(/^Empresa negativo: faltan \$\s?[\d.]+$/), href: "/admin/clientes/negativo" });
+    expect(c.items[0]).toEqual({ label: expect.stringMatching(/^Empresa negativo: faltan [\d.]+ sats$/), href: "/admin/clientes/negativo" });
     // La misma situación con una devolución por conciliar ya está marcada en Pagos: el cuadre no la repite.
-    await tx({ id: "RET-REVISION", userId: "revision", kind: "retiro", amountCop: 90_000_000 });
+    await tx({ id: "RET-REVISION", userId: "revision", kind: "retiro", amountCop: 0, amountSats: 9_000_000 });
     const [sub] = await dbMod.db.select().from(schema.planSubscription).where(drizzle.eq(schema.planSubscription.userId, "revision"));
     const [pay] = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.and(drizzle.eq(schema.ledgerTx.userId, "revision"), drizzle.eq(schema.ledgerTx.kind, "plan_mes")));
     await dbMod.db.insert(schema.paymentReview).values({ paymentId: pay.id, userId: "revision", subscriptionId: sub.id, occurredAt: Date.now(), reason: "charged_back" });
     expect((await check("saldo-negativo")).count).toBe(1);
   });
 
-  it("más energía contratada que la que produce la planta es un error", async () => {
-    const { PLANT } = await import("@/config/plant");
+  it("más hashrate contratado que la capacidad de la granja es un error", async () => {
+    const { FARM } = await import("@/config/farm");
     const { invalidateSettings } = await import("@/lib/settings");
-    const [before] = await dbMod.db.select().from(schema.plant).where(drizzle.eq(schema.plant.id, PLANT.id));
-    await dbMod.db.update(schema.plant).set({ peakKw: 10 }).where(drizzle.eq(schema.plant.id, PLANT.id));
+    const [before] = await dbMod.db.select().from(schema.farm).where(drizzle.eq(schema.farm.id, FARM.id));
+    await dbMod.db.update(schema.farm).set({ capacityTh: 10 }).where(drizzle.eq(schema.farm.id, FARM.id));
     invalidateSettings();
-    expect(await check("cupo")).toMatchObject({ ok: false, items: [{ label: "Planta", href: "/admin/planta" }] });
-    await dbMod.db.update(schema.plant).set({ peakKw: before.peakKw }).where(drizzle.eq(schema.plant.id, PLANT.id));
+    expect(await check("capacidad")).toMatchObject({ ok: false, items: [{ label: "Granja", href: "/admin/granja" }] });
+    await dbMod.db.update(schema.farm).set({ capacityTh: before.capacityTh }).where(drizzle.eq(schema.farm.id, FARM.id));
     invalidateSettings();
-    expect(await check("cupo")).toMatchObject({ ok: true });
+    expect(await check("capacidad")).toMatchObject({ ok: true });
   });
 
   it("avisa de lo que lleva días esperando: retiros, transferencias y devoluciones sin conciliar", async () => {
-    await withdrawals.createBankWithdrawal({ userId: "espera", amountCop: 500_000, destination: BANK });
-    await tx({ id: "XGE-TRANSF", userId: "espera", method: "transferencia", status: "verificando" });
+    await withdrawals.createBtcWithdrawal({ userId: "espera", amountSats: 60_000, address: ADDR });
+    await tx({ id: "ECH-TRANSF", userId: "espera", method: "transferencia", status: "verificando" });
     const later = Date.now() + 8 * DAY_MS;
     const report = await integrity.checkIntegrity(later);
     const byId = Object.fromEntries(report.checks.map((c) => [c.id, c]));
     expect(byId["retiros-esperando"]).toMatchObject({ ok: false, level: "aviso", items: expect.arrayContaining([{ label: expect.stringContaining("Empresa espera"), href: "/admin/retiros" }]) });
-    expect(byId["transferencias-esperando"]).toMatchObject({ ok: false, level: "aviso", count: 1, items: [{ label: expect.stringContaining("XGE-TRANSF"), href: "/admin/pagos?q=XGE-TRANSF" }] });
+    expect(byId["transferencias-esperando"]).toMatchObject({ ok: false, level: "aviso", count: 1, items: [{ label: expect.stringContaining("ECH-TRANSF"), href: "/admin/pagos?q=ECH-TRANSF" }] });
     // La devolución de «sin-pago» se registró hoy: a los 8 días ya pasó el plazo para conciliarla.
     expect(byId["devoluciones-esperando"]).toMatchObject({ ok: false, level: "aviso" });
     expect(report.warnings).toBe(3);

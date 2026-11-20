@@ -9,7 +9,7 @@ export async function PUT(req: Request) {
     const support = await saveSupport(await readJson(req));
     await audit(
       { id: ctx.user.id, name: ctx.user.name },
-      "config_planta",
+      "config_granja",
       "Actualizó los contactos oficiales de soporte",
       { support },
     );

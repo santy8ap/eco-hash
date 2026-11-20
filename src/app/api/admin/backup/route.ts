@@ -46,7 +46,7 @@ export async function GET() {
     return new Response(stream, {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename="respaldo-x-green-energy-${isoColombiaDate(Date.now())}.json"`,
+        "Content-Disposition": `attachment; filename="respaldo-eco-hash-${isoColombiaDate(Date.now())}.json"`,
         "Cache-Control": "private, no-store",
       },
     });

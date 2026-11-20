@@ -3,7 +3,7 @@ import { handleError } from "@/lib/api";
 import { maybeReconcile } from "@/lib/jobs/tick";
 import { getCatalog } from "@/lib/plans/service";
 
-/** Catálogo público: la curva solar, los planes con sus precios vigentes y el cupo de la planta. */
+/** Catálogo público: los planes con sus precios vigentes, el hashprice y la capacidad libre de la granja. */
 export async function GET() {
   try {
     await connection();

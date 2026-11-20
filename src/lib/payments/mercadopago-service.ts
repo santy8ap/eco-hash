@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { ledgerTx } from "@/lib/db/schema";
 import { baseUrl, isDemoMode } from "@/lib/env";
 import { MarketError } from "@/lib/errors";
-import { formatCop } from "@/lib/format";
+import { formatCop, formatTh } from "@/lib/format";
 import { newId, orderCode } from "@/lib/ids";
 import {
   ORDER_TTL_MS,
@@ -143,11 +143,11 @@ export async function createMercadoPagoOrder(
     expiresAt: now + ORDER_TTL_MS,
     subscriptionId: p.subscriptionId,
     periodIndex: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
   });
   const preference = buildPreference({
     orderId,
-    title: `${p.planName} · mes ${p.periodIndex} de ${p.months} · ${BRAND.name}`,
+    title: `Plan ${p.planName} (${formatTh(p.hashrateTh)}) · mes ${p.periodIndex} de ${p.months} · ${BRAND.name}`,
     amountCop: p.amountCop,
     baseUrl: baseUrl(),
     payer: { email: input.email, fullName: profile.fullName },
@@ -197,7 +197,7 @@ export async function createMercadoPagoOrder(
     userId: input.userId,
     plan: p.subscriptionId,
     mes: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
     amountCop: p.amountCop,
     tarjetas: mpFor.cards,
     pruebas: testAccount,

@@ -1,29 +1,28 @@
 import "server-only";
 import { eq } from "drizzle-orm";
-import { PLANT } from "@/config/plant";
+import { FARM } from "@/config/farm";
 import { db } from "@/lib/db";
 import { ensureReady } from "@/lib/db/init";
-import { plant } from "@/lib/db/schema";
-import { plantDailyKwh } from "@/lib/energy/solar-day";
-import { DEFAULT_SETTINGS, catalogFrom, parsePlanPrices, solarFrom, type PlantSettings } from "@/lib/plant-settings";
+import { farm } from "@/lib/db/schema";
+import { DEFAULT_SETTINGS, catalogFrom, parsePlanPrices, type FarmSettings } from "@/lib/farm-settings";
 
-let cache: { at: number; value: PlantSettings } | null = null;
+let cache: { at: number; value: FarmSettings } | null = null;
 
 export function invalidateSettings() {
   cache = null;
 }
 
-/** Configuración vigente de la planta y de los planes (caché de 5 s). */
-export async function readSettings(): Promise<PlantSettings> {
+/** Configuración vigente de la granja y de los planes (caché de 5 s). */
+export async function readSettings(): Promise<FarmSettings> {
   if (cache && Date.now() - cache.at < 5000) return cache.value;
   await ensureReady();
-  const [row] = await db.select().from(plant).where(eq(plant.id, PLANT.id));
-  const value: PlantSettings = row
+  const [row] = await db.select().from(farm).where(eq(farm.id, FARM.id));
+  const value: FarmSettings = row
     ? {
         name: row.name,
         location: row.location,
-        peakKw: row.peakKw,
-        saleCopPerKwh: row.saleCopPerKwh,
+        capacityTh: row.capacityTh,
+        satsPerThDay: row.satsPerThDay,
         planPrices: parsePlanPrices(row.planPrices),
         updatedAt: row.updatedAt ?? null,
       }
@@ -32,11 +31,10 @@ export async function readSettings(): Promise<PlantSettings> {
   return value;
 }
 
-/** Configuración con lo que se deriva de ella: la curva solar, el catálogo y la energía diaria de la planta. */
+/** Configuración con lo que se deriva de ella: el catálogo y la capacidad de la granja. */
 export async function readConfig() {
   const settings = await readSettings();
-  const solar = solarFrom(settings);
-  return { settings, solar, catalog: catalogFrom(settings), plantDailyKwh: plantDailyKwh(solar) };
+  return { settings, catalog: catalogFrom(settings), capacityTh: settings.capacityTh };
 }
 
 export type Config = Awaited<ReturnType<typeof readConfig>>;

@@ -8,7 +8,7 @@ process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xg
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let analytics: typeof import("@/lib/admin/analytics");
-const MONTH_180 = 20_880_000;
+const MONTH_180 = 460_000;
 
 beforeAll(async () => {
   analytics = await import("@/lib/admin/analytics");
@@ -20,8 +20,8 @@ beforeAll(async () => {
   const { ensureDemoAccount } = await import("@/lib/db/seed");
   const { db } = await import("@/lib/db");
   await ensureDemoAccount(db);
-  await fundUser("a1", { planId: "p180", days: 25 });
-  await fundUser("a2", { planId: "p180", days: 40 });
+  await fundUser("a1", { planId: "h100", days: 25 });
+  await fundUser("a2", { planId: "h100", days: 40 });
 }, 120_000);
 
 describe("meses en hora de Colombia", () => {
@@ -46,7 +46,7 @@ describe("analítica del negocio", () => {
     const current = a.months[11];
     // El plan de a2 empezó hace 40 días: cuenta en su mes, no en este (salvo que el mes acabe de empezar).
     const a2Month = analytics.monthKey(Date.now() - 40 * 86_400_000);
-    expect(current).toMatchObject({ collectedCop: 2 * MONTH_180, payments: 2, soldKwh: 2 * 60_000 });
+    expect(current).toMatchObject({ collectedCop: 2 * MONTH_180, payments: 2, soldTh: 2 * 100 });
     expect(a.months.reduce((s, m) => s + m.newPlans, 0)).toBe(2);
     expect(a.months.find((m) => m.month === a2Month)!.newPlans).toBeGreaterThanOrEqual(1);
     expect(current.newClients).toBe(4);
@@ -54,12 +54,12 @@ describe("analítica del negocio", () => {
     expect(a.totals).toMatchObject({ collectedCop: 2 * MONTH_180, payments: 2, averageTicketCop: MONTH_180 });
     expect(a.funnel).toEqual({ registered: 4, withProfile: 3, paid: 2, active: 2 });
     expect(a.dueSoon.map((r) => r.customer)).toEqual(["Renueva Pronto S.A.S."]);
-    expect(a.dueSoon[0]).toMatchObject({ planName: "Plan 180", nextMonth: 2, months: 3, amountCop: MONTH_180 });
+    expect(a.dueSoon[0]).toMatchObject({ planName: "Nonce", nextMonth: 2, months: 3, amountCop: MONTH_180 });
     expect(a.paused.map((r) => r.customer)).toEqual(["En Pausa S.A.S."]);
     expect(a.paused[0].graceEndsAt).toBeGreaterThan(Date.now());
     expect(a.expectedNext30Cop).toBe(2 * MONTH_180);
-    expect(a.capacity.contractedDailyKwh).toBeGreaterThan(0);
-    expect(a.capacity.contractedDailyKwh).toBeLessThan(a.capacity.plantDailyKwh);
+    expect(a.capacity.contractedTh).toBeGreaterThan(0);
+    expect(a.capacity.contractedTh).toBeLessThan(a.capacity.capacityTh);
   });
 
   it("con dinero real, los pagos de prueba no cuentan como recaudo", async () => {

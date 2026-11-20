@@ -12,7 +12,7 @@ import { formatCop, shortAddress } from "@/lib/format";
 import type { TxDTO } from "@/lib/portfolio";
 import { buildPayerProofMessage } from "@/lib/signing";
 import { useWallet } from "@/lib/wallet/context";
-import { accountTypeLabel, isPhoneWallet } from "@/lib/withdrawal-schema";
+import { accountTypeLabel, isPhoneWallet } from "@/lib/bank-account";
 import { useUser } from "@/components/panel/user-context";
 import { ErrorNote, Field } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";

@@ -35,7 +35,10 @@ export async function GET(req: Request) {
                 "Medio",
                 "Plan",
                 "Mes",
-                "Energía kWh",
+                "Hashrate TH/s",
+                "Sats del retiro",
+                "Dirección o wallet",
+                "Hash o txid",
               ]);
           started = true;
           for (const tx of batch)
@@ -48,7 +51,10 @@ export async function GET(req: Request) {
               paymentMethodLabel(tx.method),
               tx.planName,
               tx.periodIndex,
-              tx.kwh,
+              tx.hashrateTh,
+              tx.amountSats,
+              tx.walletAddress,
+              tx.txHash,
             ]);
           if (cancelled) return;
           controller.enqueue(encoder.encode(chunk));
@@ -68,7 +74,7 @@ export async function GET(req: Request) {
     return new Response(stream, {
       headers: {
         "content-type": "text/csv; charset=utf-8",
-        "content-disposition": `attachment; filename="x-green-energy-movimientos-${isoColombiaDate(Date.now())}.csv"`,
+        "content-disposition": `attachment; filename="eco-hash-movimientos-${isoColombiaDate(Date.now())}.csv"`,
         "cache-control": "private, no-store",
       },
     });

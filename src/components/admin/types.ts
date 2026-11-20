@@ -88,7 +88,7 @@ export interface AdminWithdrawal extends TxDTO {
 
 /** Cada acción de la bitácora con su nombre legible. El tipo obliga a nombrar las acciones nuevas. */
 const ACTION_LABEL: Record<AdminAction, string> = {
-  config_planta: "Configuración",
+  config_granja: "Configuración",
   pago_manual: "Pago manual",
   config_transferencia: "Cuenta para transferencias",
   confirmar_transferencia: "Transferencia confirmada",

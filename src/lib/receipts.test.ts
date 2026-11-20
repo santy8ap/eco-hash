@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../tests/helpers";
 
-const testDir = mkdtempSync(path.join(tmpdir(), "xge-receipts-"));
+const testDir = mkdtempSync(path.join(tmpdir(), "ech-receipts-"));
 process.env.DATABASE_URL = `file:${path.join(testDir, "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
@@ -31,22 +31,51 @@ beforeAll(async () => {
   });
   const result = await pay.payWithTestPayment({
     userId: "receipt-owner",
-    planId: "p180",
+    planId: "h100",
   });
   orderId = result.order.id;
 }, 120000);
 
 describe("comprobantes del titular", () => {
-  it("usa los precios del contrato y avisa si no hubo dinero real", async () => {
+  it("usa el precio del contrato, el hashrate y el hashprice que fijó ese mes, y avisa si no hubo dinero real", async () => {
     const receipt = await receipts.receiptData("receipt-owner", orderId);
     expect(receipt).toMatchObject({
       holder: "Mariana Gómez Restrepo",
-      amountCop: 20880000,
-      priceCopPerKwh: 348,
-      saleCopPerKwh: 400,
-      kwh: 60000,
+      amountCop: 460000,
+      priceCopPerThMonth: 4600,
+      hashrateTh: 100,
+      satsPerThDay: 42,
+      amountSats: null,
       test: true,
     });
+  });
+
+  it("el comprobante de un retiro muestra los sats, la dirección y el txid", async () => {
+    await dbModule.db.insert(schema.ledgerTx).values({
+      id: "RET-RECEIPT01",
+      userId: "receipt-owner",
+      kind: "retiro",
+      status: "confirmada",
+      amountCop: 504000,
+      amountSats: 120000,
+      asset: "BTC",
+      assetAmount: 0.0012,
+      network: "Bitcoin",
+      walletAddress: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+      txHash: "a".repeat(64),
+      createdAt: Date.now(),
+      confirmedAt: Date.now(),
+    });
+    const receipt = await receipts.receiptData("receipt-owner", "RET-RECEIPT01");
+    expect(receipt).toMatchObject({
+      kind: "retiro",
+      amountSats: 120000,
+      address: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+      reference: "a".repeat(64),
+      hashrateTh: null,
+    });
+    const bytes = await receipts.renderReceipt(receipt);
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
   });
   it("rechaza movimientos ajenos y comprobantes de pagos pendientes", async () => {
     await expect(
@@ -55,16 +84,16 @@ describe("comprobantes del titular", () => {
     await dbModule.db
       .insert(schema.ledgerTx)
       .values({
-        id: "IWE-PENDING-RECEIPT",
+        id: "ECH-PENDING-RECEIPT",
         userId: "receipt-owner",
         kind: "plan_mes",
         status: "pendiente",
-        amountCop: 20880000,
+        amountCop: 460000,
         createdAt: Date.now(),
         method: "mercadopago",
       });
     await expect(
-      receipts.receiptData("receipt-owner", "IWE-PENDING-RECEIPT"),
+      receipts.receiptData("receipt-owner", "ECH-PENDING-RECEIPT"),
     ).rejects.toMatchObject({ status: 409 });
   });
   it("genera un PDF válido con tildes y referencia real de la operación", async () => {
@@ -74,16 +103,15 @@ describe("comprobantes del titular", () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
     const { PDFDocument } = await import("pdf-lib");
     expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(0);
-    if (process.env.XGE_RECEIPT_PREVIEW)
-      writeFileSync(process.env.XGE_RECEIPT_PREVIEW, bytes);
+    if (process.env.ECH_RECEIPT_PREVIEW)
+      writeFileSync(process.env.ECH_RECEIPT_PREVIEW, bytes);
   });
   it("no crea una orden cuando el usuario revisó un importe que ya cambió", async () => {
     await expect(
       pay.payWithTestPayment({
         userId: "receipt-owner",
-        planId: "p180",
+        planId: "h100",
         expectedAmountCop: 1000000,
-        expectedSaleCopPerKwh: 400,
       }),
     ).rejects.toMatchObject({
       status: 409,
@@ -94,6 +122,6 @@ describe("comprobantes del titular", () => {
       .select()
       .from(schema.ledgerTx)
       .where(eq(schema.ledgerTx.userId, "receipt-owner"));
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
   });
 });

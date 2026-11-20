@@ -1,7 +1,7 @@
 import { formatAsset, formatNumber, shortAddress } from "@/lib/format";
 import type { TxDTO } from "@/lib/portfolio";
 import { paymentMethodLabel as methodName } from "@/lib/labels";
-import { accountTypeLabel, isPhoneWallet } from "@/lib/withdrawal-schema";
+import { accountTypeLabel, isPhoneWallet } from "@/lib/bank-account";
 
 /** Hash de una transacción EVM (los comprobantes bancarios de un retiro no lo son). */
 export const isEvmHash = (h: string | null | undefined): h is string => !!h && /^0x[0-9a-fA-F]{64}$/.test(h);

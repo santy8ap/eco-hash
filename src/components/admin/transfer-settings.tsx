@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { goToLoginIfSignedOut, refetch, SESSION_CLOSED, useJson } from "@/lib/client/use-json";
-import { BANKS, BANK_ACCOUNT_TYPES, accountFieldsFor, isPhoneWallet } from "@/lib/withdrawal-schema";
+import { BANKS, BANK_ACCOUNT_TYPES, accountFieldsFor, isPhoneWallet } from "@/lib/bank-account";
 import { ErrorNote, Field } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
 

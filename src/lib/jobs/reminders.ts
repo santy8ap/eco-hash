@@ -1,9 +1,8 @@
 import "server-only";
 import { customerEmailConfig, customerMessages, deliverCustomerEmail, type CustomerMessage, type PlanLike } from "@/lib/customer-email";
-import type { SubscriptionState } from "@/lib/energy/plan-math";
+import type { SubscriptionState } from "@/lib/mining/plan-math";
 import { listAllSubscriptions } from "@/lib/plans/service";
 import { toSubscriptionDTO } from "@/lib/portfolio";
-import { readConfig } from "@/lib/settings";
 import { DAY_MS } from "@/lib/time";
 
 /** Con cuántos días de anticipación se avisa que vence una mensualidad, y que termina un plan. */
@@ -28,8 +27,7 @@ export async function sendPlanReminders({ now = Date.now(), clock = Date.now }: 
   const result = { enviados: 0, omitidos: 0, fallidos: 0 };
   if (!customerEmailConfig().enabled) return result;
   const started = clock();
-  const { solar } = await readConfig();
-  const subs = (await listAllSubscriptions()).map((s) => ({ userId: s.userId, dto: toSubscriptionDTO(s, solar, now) }));
+  const subs = (await listAllSubscriptions()).map((s) => ({ userId: s.userId, dto: toSubscriptionDTO(s, now) }));
   for (const { userId, dto } of subs) {
     if (clock() - started >= BUDGET_MS) break;
     const renewed = subs.some((o) => o.userId === userId && o.dto.id !== dto.id && o.dto.planId === dto.planId && (o.dto.startedAt ?? 0) > (dto.startedAt ?? 0));

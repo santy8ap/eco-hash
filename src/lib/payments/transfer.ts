@@ -17,7 +17,7 @@ import { toTxDTO, type TxDTO } from "@/lib/portfolio";
 import { requireCompleteProfile } from "@/lib/profile";
 import { safeText } from "@/lib/security/text";
 import { transferReference } from "@/lib/transfer-reference";
-import { BANKS, accountKindLabel, accountNumberError, isPhoneWallet, normalizeAccountNumber } from "@/lib/withdrawal-schema";
+import { BANKS, accountKindLabel, accountNumberError, isPhoneWallet, normalizeAccountNumber } from "@/lib/bank-account";
 import { payLog } from "./log";
 import { bankReferenceOwner } from "./bank-reference";
 import { assertExpectedPayment, type ExpectedPayment } from "./plan-target";
@@ -191,7 +191,7 @@ export async function reportTransfer(input: TransferTarget & { receipt: string }
         expectedAmount: String(p.amountCop),
         subscriptionId: p.subscriptionId,
         periodIndex: p.periodIndex,
-        kwh: p.kwh,
+        hashrateTh: p.hashrateTh,
       })
       .returning();
     return { row: inserted, created: true };

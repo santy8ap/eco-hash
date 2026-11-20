@@ -26,7 +26,7 @@ async function pending() {
   // Un titular distinto mantiene separados los borradores de cada escenario.
   const userId = `atomic-${++sequence}`;
   await createUser(userId);
-  const p = await plans.resolvePlanPayment(userId, { planId: "p180" });
+  const p = await plans.resolvePlanPayment(userId, { planId: "h100" });
   const id = `IWE-ATOMIC-${sequence}`;
   await database.db.insert(schema.ledgerTx).values({
     id,

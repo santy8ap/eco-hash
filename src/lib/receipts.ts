@@ -9,7 +9,7 @@ import { BRAND } from "@/config/brand";
 import { db } from "@/lib/db";
 import { ledgerTx } from "@/lib/db/schema";
 import { MarketError } from "@/lib/errors";
-import { formatCop, formatDateTime, formatNumber } from "@/lib/format";
+import { formatBtc, formatCop, formatDateTime, formatHashprice, formatSats, formatTh } from "@/lib/format";
 import { getSubscription } from "@/lib/plans/service";
 import { getProfile } from "@/lib/profile";
 
@@ -23,9 +23,14 @@ export interface ReceiptData {
   planName: string | null;
   periodIndex: number | null;
   months: number | null;
-  kwh: number | null;
-  priceCopPerKwh: number | null;
-  saleCopPerKwh: number | null;
+  /** Hashrate del mes pagado (TH/s) */
+  hashrateTh: number | null;
+  priceCopPerThMonth: number | null;
+  /** Hashprice que fijó ese mes al activarse (sats por TH/s al día) */
+  satsPerThDay: number | null;
+  /** Retiro: sats enviados y la dirección de destino */
+  amountSats: number | null;
+  address: string | null;
   method: string;
   reference: string | null;
   test: boolean;
@@ -69,9 +74,11 @@ export async function receiptData(
     planName: sub?.planName ?? null,
     periodIndex: tx.periodIndex,
     months: sub?.months ?? null,
-    kwh: tx.kwh,
-    priceCopPerKwh: sub?.priceCopPerKwh ?? null,
-    saleCopPerKwh: sub?.saleCopPerKwh ?? null,
+    hashrateTh: tx.hashrateTh ?? null,
+    priceCopPerThMonth: sub?.priceCopPerThMonth ?? null,
+    satsPerThDay: sub?.periods.find((p) => p.txId === tx.id)?.satsPerThDay ?? null,
+    amountSats: tx.kind === "retiro" ? (tx.amountSats ?? null) : null,
+    address: tx.kind === "retiro" ? tx.walletAddress : null,
     method:
       paymentMethodLabel(tx.method) || (tx.kind === "retiro" ? "Retiro" : "Pago"),
     reference: tx.providerId ?? tx.txHash,
@@ -127,7 +134,7 @@ export async function renderReceipt(data: ReceiptData): Promise<Uint8Array> {
     y -= 25;
   };
   const field = (label: string, value: string) => {
-    text(label.toUpperCase().replace(/\bKWH\b/g, "kWh"), 8, true);
+    text(label.toUpperCase(), 8, true);
     text(value, 11);
     y -= 9;
   };
@@ -151,34 +158,30 @@ export async function renderReceipt(data: ReceiptData): Promise<Uint8Array> {
       "Plan",
       `${data.planName}${data.periodIndex ? ` - mes ${data.periodIndex} de ${data.months}` : ""}`,
     );
-  if (data.kwh != null)
-    field("Energía de este mes", `${formatNumber(data.kwh)} kWh`);
-  if (data.priceCopPerKwh != null && data.saleCopPerKwh != null) {
-    field("Precio de compra", `${formatCop(data.priceCopPerKwh)} COP / kWh`);
-    field(
-      "Precio de venta contratado",
-      `${formatCop(data.saleCopPerKwh)} COP / kWh`,
-    );
-    field(
-      "Utilidad bruta por kWh",
-      `${formatCop(data.saleCopPerKwh - data.priceCopPerKwh)} COP / kWh`,
-    );
+  if (data.hashrateTh != null) field("Hashrate de este mes", `${formatTh(data.hashrateTh)} durante 30 días`);
+  if (data.priceCopPerThMonth != null) field("Precio contratado", `${formatCop(data.priceCopPerThMonth)} COP por TH/s al mes`);
+  if (data.satsPerThDay != null && data.hashrateTh != null) {
+    field("Hashprice fijado para este mes", formatHashprice(data.satsPerThDay));
+    field("Minería esperada del mes", formatSats(data.hashrateTh * data.satsPerThDay * 30));
   }
+  if (data.address) field("Dirección Bitcoin de destino", data.address);
   field("Medio de la operación", data.method);
-  if (data.reference) field("Referencia del proveedor", data.reference);
+  if (data.reference) field(data.kind === "retiro" ? "Txid del envío" : "Referencia del proveedor", data.reference);
   rule();
-  text(
-    data.kind === "retiro"
-      ? "VALOR DEL RETIRO CONFIRMADO"
-      : "VALOR DEL PAGO CONFIRMADO",
-    8,
-    true,
-  );
-  y -= 12;
-  text(`${formatCop(data.amountCop)} COP`, 24);
+  if (data.kind === "retiro" && data.amountSats != null) {
+    text("VALOR DEL RETIRO ENVIADO", 8, true);
+    y -= 12;
+    text(formatSats(data.amountSats), 24);
+    y -= 8;
+    text(`${formatBtc(data.amountSats)} · equivalente al pedirlo: ${formatCop(data.amountCop)} COP`, 10, true);
+  } else {
+    text(data.kind === "retiro" ? "VALOR DEL RETIRO CONFIRMADO" : "VALOR DEL PAGO CONFIRMADO", 8, true);
+    y -= 12;
+    text(`${formatCop(data.amountCop)} COP`, 24);
+  }
   y -= 20;
   text(
-    "Documento informativo de una operación confirmada. No sustituye una factura fiscal. Los precios y la energía del plan son los contratados; la utilidad bruta se expresa antes de costos e impuestos.",
+    "Documento informativo de una operación confirmada. No sustituye una factura fiscal. El precio y el hashrate del plan son los contratados; los sats minados dependen del hashprice de cada mes.",
     8,
     true,
   );

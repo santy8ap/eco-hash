@@ -21,7 +21,7 @@ beforeAll(async () => {
   await createUser("d1", { name: "Sin Pagos S.A.S." });
   await createUser("d2", { name: "Con Plan S.A.S." });
   await createUser("d3", { name: "Pagó Antes S.A.S." });
-  await fundUser("d2", { planId: "p180", days: 10 });
+  await fundUser("d2", { planId: "h100", days: 10 });
   const now = Date.now();
   // Un acceso con Google y una sesión, para comprobar que se borran y que no se exportan sus tokens.
   await dbMod.db.insert(schema.account).values({ id: "acc-d1", accountId: "google-123", providerId: "google", userId: "d1", accessToken: "token-secreto-google", createdAt: new Date(now), updatedAt: new Date(now) });
@@ -50,7 +50,8 @@ describe("descargar mis datos", () => {
     expect(text).not.toContain("token-de-sesion-d1");
     const withPlan = await privacy.exportPersonalData("d2");
     expect(withPlan.planes).toHaveLength(1);
-    expect(withPlan.movimientos[0]).toMatchObject({ tipo: "pago de un mes", montoCop: 20_880_000 });
+    expect(withPlan.movimientos[0]).toMatchObject({ tipo: "pago de un mes", montoCop: 460_000, hashrateThS: 100 });
+    expect(withPlan.planes[0]).toMatchObject({ hashrateThS: 100, precioCopPorThAlMes: 4600 });
   });
 
   it("una cuenta que no existe no se exporta", async () => {

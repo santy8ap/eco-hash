@@ -20,11 +20,11 @@ async function backupText() {
   return chunks.join("");
 }
 
-/** Una base nueva, con el esquema completo y la fila de la planta que crea la app al arrancar. */
+/** Una base nueva, con el esquema completo y la fila de la granja que crea la app al arrancar. */
 async function freshDatabase(name: string) {
   const client = createClient({ url: `file:${path.join(dir, name)}` });
   await migrate.migrate(client, { localFile: true });
-  await client.execute("INSERT INTO plant (id, name, location) VALUES ('solaxy-solar-1', 'Planta nueva', 'Sin ubicación')");
+  await client.execute("INSERT INTO farm (id, name, location) VALUES ('eco-hash-farm-1', 'Granja nueva', 'Sin ubicación')");
   return client;
 }
 
@@ -35,8 +35,8 @@ beforeAll(async () => {
   migrate = await import("./migrate");
   await createUser("r1", { name: "Respaldo Uno S.A.S." });
   await createUser("r2", { name: "Respaldo Dos S.A.S." });
-  await fundUser("r1", { planId: "p180", days: 10 });
-  await fundUser("r2", { planId: "p360", days: 3 });
+  await fundUser("r1", { planId: "h100", days: 10 });
+  await fundUser("r2", { planId: "h250", days: 3 });
   const now = Date.now();
   // Lo que no debe salir en el respaldo: una sesión y el acceso de Google con su token.
   await dbMod.db.insert(schema.session).values({ id: "ses-r1", token: "token-de-sesion-secreto", userId: "r1", expiresAt: new Date(now + 86_400_000), createdAt: new Date(now), updatedAt: new Date(now) });
@@ -48,13 +48,13 @@ describe("respaldo de los datos", () => {
   it("es un JSON con todas las tablas del negocio y sin sesiones, tokens ni límites de uso", async () => {
     const text = await backupText();
     const backup = format.parseBackup(JSON.parse(text));
-    expect(backup).toMatchObject({ formato: "x-green-energy/respaldo", version: 1, generadoEn: "2026-11-13T15:00:00.000Z" });
+    expect(backup).toMatchObject({ formato: "eco-hash/respaldo", version: 1, generadoEn: "2026-11-13T15:00:00.000Z" });
     expect(Object.keys(backup.tablas)).toEqual([...format.BACKUP_TABLES]);
     expect(backup.tablas.user.map((u) => u.id).sort()).toEqual(["r1", "r2"]);
     expect(backup.tablas.plan_subscription).toHaveLength(2);
     expect(backup.tablas.plan_period).toHaveLength(2);
     expect(backup.tablas.ledger_tx).toHaveLength(2);
-    expect(backup.migraciones.length).toBeGreaterThan(5);
+    expect(backup.migraciones).toEqual(["0000_init", "0001_rate_limit"]);
     for (const secret of ["token-de-sesion-secreto", "token-de-google-secreto", "access_token"]) expect(text).not.toContain(secret);
     for (const table of ["session", "account", "verification", "rate_limit", "job_state"]) expect(Object.keys(backup.tablas)).not.toContain(table);
   });
@@ -63,7 +63,7 @@ describe("respaldo de los datos", () => {
     const backup = format.parseBackup(JSON.parse(await backupText()));
     const target = await freshDatabase("destino.db");
     const counts = await format.restoreBackup(target, backup);
-    expect(counts).toMatchObject({ user: 2, company_profile: 2, plan_subscription: 2, plan_period: 2, ledger_tx: 2, admin_audit: 1, plant: 1 });
+    expect(counts).toMatchObject({ user: 2, company_profile: 2, plan_subscription: 2, plan_period: 2, ledger_tx: 2, admin_audit: 1, farm: 1 });
     for (const table of format.BACKUP_TABLES) {
       const a = await dbMod.client.execute(`SELECT * FROM "${table}" ORDER BY rowid`);
       const b = await target.execute(`SELECT * FROM "${table}" ORDER BY rowid`);

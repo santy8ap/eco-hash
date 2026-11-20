@@ -10,15 +10,15 @@ import {
   subscriptionState,
   type Period,
   type SubscriptionState,
-} from "@/lib/energy/plan-math";
+} from "@/lib/mining/plan-math";
 import { MarketError } from "@/lib/errors";
 import { newId, planCode } from "@/lib/ids";
-import type { CatalogPlan } from "@/lib/plant-settings";
+import type { CatalogPlan } from "@/lib/farm-settings";
 import { readConfig } from "@/lib/settings";
 
 /**
- * Planes de energía: catálogo con cupo, qué mes se paga y la activación del periodo cuando el
- * pago se confirma. El estado de un plan nunca se guarda: se deriva de sus periodos.
+ * Planes de hashrate: catálogo con la capacidad libre de la granja, qué mes se paga y la activación del periodo
+ * cuando el pago se confirma. El estado de un plan nunca se guarda: se deriva de sus periodos.
  */
 
 export type SubscriptionRow = typeof planSubscription.$inferSelect;
@@ -30,12 +30,12 @@ export interface SubscriptionWithPeriods extends SubscriptionRow {
   reviewRequired?: boolean;
 }
 
-/** Tolerancia al comparar kWh (los kWh diarios son números enteros; esto solo cubre el redondeo). */
-const EPS_KWH = 1e-6;
+/** Tolerancia al comparar TH/s (los planes son números enteros; esto solo cubre el redondeo). */
+const EPS_TH = 1e-6;
 
 /**
- * Los meses pagados de un plan, como ventanas de tiempo. Si el admin cerró el plan,
- * la energía deja de generarse en ese instante: los periodos se recortan ahí.
+ * Los meses pagados de un plan, como ventanas de tiempo con su hashprice. Si el admin cerró el plan,
+ * la minería se detiene en ese instante: los periodos se recortan ahí.
  */
 export function periodsOf(sub: SubscriptionWithPeriods): Period[] {
   const cut = sub.cancelledAt;
@@ -48,6 +48,7 @@ export function periodsOf(sub: SubscriptionWithPeriods): Period[] {
         p.startsAt,
         Math.min(p.endsAt, cut ?? Infinity, p.stoppedAt ?? Infinity),
       ),
+      satsPerThDay: p.satsPerThDay,
     }));
 }
 
@@ -60,12 +61,12 @@ export function stateOf(
 }
 
 /**
- * kWh diarios que ya ocupan cupo de la planta: planes activos o en pausa (dentro de los 15 días de gracia).
+ * TH/s que ya ocupan capacidad de la granja: planes activos o en pausa (dentro de los 15 días de gracia).
  * Es SQL puro para poder usarlo dentro de la sentencia que activa un periodo (ver activatePeriod).
  */
-function reservedDailyKwhSql(now: number, excludeSubscriptionId: string) {
+function reservedThSql(now: number, excludeSubscriptionId: string) {
   return sql`(
-    SELECT coalesce(sum(s.daily_kwh), 0)
+    SELECT coalesce(sum(s.hashrate_th), 0)
     FROM plan_subscription s
     JOIN (
       SELECT per.subscription_id, count(*) AS n,
@@ -79,16 +80,16 @@ function reservedDailyKwhSql(now: number, excludeSubscriptionId: string) {
   )`;
 }
 
-export async function contractedDailyKwh(
+export async function contractedTh(
   now = Date.now(),
   excludeSubscriptionId = "",
 ) {
   const [row] = await db
     .select({
-      kwh: sql<number>`${reservedDailyKwhSql(now, excludeSubscriptionId)}`,
+      th: sql<number>`${reservedThSql(now, excludeSubscriptionId)}`,
     })
     .from(sql`(SELECT 1)`);
-  return Number(row?.kwh ?? 0);
+  return Number(row?.th ?? 0);
 }
 
 async function withPeriods(
@@ -164,24 +165,23 @@ export async function getSubscription(
   return sub ? (await withPeriods([sub], session))[0] : null;
 }
 
-/** El catálogo vigente con el cupo de la planta. */
+/** El catálogo vigente con la capacidad libre de la granja. */
 export async function getCatalog(now = Date.now()) {
-  const { settings, solar, catalog, plantDailyKwh } = await readConfig();
-  const contracted = await contractedDailyKwh(now);
-  const available = Math.max(0, plantDailyKwh - contracted);
+  const { settings, catalog, capacityTh } = await readConfig();
+  const contracted = await contractedTh(now);
+  const available = Math.max(0, capacityTh - contracted);
   return {
-    /** Hora del servidor: el navegador sincroniza con ella el reloj solar */
+    /** Hora del servidor: el navegador sincroniza con ella sus contadores */
     asOf: now,
-    plantName: settings.name,
+    farmName: settings.name,
     location: settings.location,
-    solar,
-    saleCopPerKwh: settings.saleCopPerKwh,
-    plantDailyKwh,
-    contractedDailyKwh: contracted,
-    availableDailyKwh: available,
+    satsPerThDay: settings.satsPerThDay,
+    capacityTh,
+    contractedTh: contracted,
+    availableTh: available,
     plans: catalog.map((p) => ({
       ...p,
-      available: p.dailyKwh <= available + EPS_KWH,
+      available: p.hashrateTh <= available + EPS_TH,
     })),
   };
 }
@@ -195,28 +195,22 @@ export interface PlanPayment {
   planName: string;
   periodIndex: number;
   months: number;
-  /** Energía del mes (kWh) */
-  kwh: number;
+  /** Hashrate del mes (TH/s) */
+  hashrateTh: number;
   amountCop: number;
-  saleCopPerKwh: number;
+  priceCopPerThMonth: number;
 }
 
 const NO_CAPACITY =
-  "La planta no tiene cupo para ese plan en este momento. Elige un plan más pequeño o escríbenos.";
+  "La granja no tiene capacidad libre para ese plan en este momento. Elige un plan más pequeño o escríbenos.";
 
 const monthOf = (
-  sub: Pick<
-    SubscriptionRow,
-    "totalKwh" | "months" | "priceCopPerKwh" | "saleCopPerKwh"
-  >,
-) => {
-  const kwh = sub.totalKwh / sub.months;
-  return {
-    kwh,
-    amountCop: Math.round(kwh * sub.priceCopPerKwh),
-    saleCopPerKwh: sub.saleCopPerKwh,
-  };
-};
+  sub: Pick<SubscriptionRow, "hashrateTh" | "priceCopPerThMonth">,
+) => ({
+  hashrateTh: sub.hashrateTh,
+  amountCop: Math.round(sub.hashrateTh * sub.priceCopPerThMonth),
+  priceCopPerThMonth: sub.priceCopPerThMonth,
+});
 
 /** El borrador sin pagar de ese plan, con los mismos precios de hoy, si ya existe. */
 async function findDraft(session: DbSession, userId: string, plan: CatalogPlan) {
@@ -234,9 +228,8 @@ async function findDraft(session: DbSession, userId: string, plan: CatalogPlan) 
     .orderBy(asc(planSubscription.createdAt));
   return drafts.find(
     (d) =>
-      d.priceCopPerKwh === plan.priceCopPerKwh &&
-      d.saleCopPerKwh === plan.saleCopPerKwh &&
-      d.totalKwh === plan.totalKwh &&
+      d.priceCopPerThMonth === plan.priceCopPerThMonth &&
+      d.hashrateTh === plan.hashrateTh &&
       d.months === plan.months,
   );
 }
@@ -259,11 +252,9 @@ async function draftFor(userId: string, plan: CatalogPlan, now: number) {
         userId,
         planId: plan.id,
         planName: plan.name,
-        totalKwh: plan.totalKwh,
+        hashrateTh: plan.hashrateTh,
         months: plan.months,
-        dailyKwh: plan.dailyKwh,
-        priceCopPerKwh: plan.priceCopPerKwh,
-        saleCopPerKwh: plan.saleCopPerKwh,
+        priceCopPerThMonth: plan.priceCopPerThMonth,
         createdAt: now,
       })
       .returning();
@@ -294,13 +285,13 @@ export async function resolvePlanPayment(
       throw new MarketError("Este plan ya tiene todos sus meses pagados.", 409);
     if (state === "vencida" || state === "cancelada")
       throw new MarketError(
-        "Este plan se cerró. Compra un plan nuevo para seguir generando energía.",
+        "Este plan se cerró. Compra un plan nuevo para seguir minando.",
         409,
       );
     if (
       state === "borrador" &&
-      (await contractedDailyKwh(now)) + sub.dailyKwh >
-        (await readConfig()).plantDailyKwh + EPS_KWH
+      (await contractedTh(now)) + sub.hashrateTh >
+        (await readConfig()).capacityTh + EPS_TH
     )
       throw new MarketError(NO_CAPACITY, 409);
     return {
@@ -313,10 +304,10 @@ export async function resolvePlanPayment(
     };
   }
 
-  const { catalog, plantDailyKwh } = await readConfig();
+  const { catalog, capacityTh } = await readConfig();
   const plan = catalog.find((p) => p.id === input.planId);
   if (!plan) throw new MarketError("Elige uno de los planes disponibles");
-  if ((await contractedDailyKwh(now)) + plan.dailyKwh > plantDailyKwh + EPS_KWH)
+  if ((await contractedTh(now)) + plan.hashrateTh > capacityTh + EPS_TH)
     throw new MarketError(NO_CAPACITY, 409);
   const draft = await draftFor(userId, plan, now);
   return {
@@ -344,8 +335,8 @@ function isUniqueViolation(err: unknown) {
 }
 
 /**
- * Activa el mes que pagó una orden. El periodo se inserta con una sola sentencia que comprueba el cupo:
- * dos pagos que llegan a la vez no pueden vender la misma energía dos veces.
+ * Activa el mes que pagó una orden, con el hashprice vigente. El periodo se inserta con una sola sentencia que
+ * comprueba la capacidad: dos pagos que llegan a la vez no pueden vender el mismo hashrate dos veces.
  */
 export async function activatePeriod(
   order: {
@@ -353,10 +344,10 @@ export async function activatePeriod(
     subscriptionId: string | null;
     periodIndex: number | null;
     amountCop: number;
-    kwh: number | null;
+    hashrateTh: number | null;
   },
   now = Date.now(),
-  context?: { session: DbSession; plantDailyKwh: number },
+  context?: { session: DbSession; capacityTh: number; satsPerThDay: number },
 ): Promise<ActivationOutcome> {
   const session = context?.session ?? db;
   const sub = order.subscriptionId
@@ -369,18 +360,19 @@ export async function activatePeriod(
   if (sub.periods.length >= sub.months || order.periodIndex !== window.index)
     return "mes_pagado";
 
-  // Un plan activo o en pausa ya tiene su cupo apartado; uno nuevo (o vencido) lo pide ahora.
+  // Un plan activo o en pausa ya tiene su capacidad apartada; uno nuevo (o vencido) la pide ahora.
   const holdsCapacity = reservesCapacity(stateOf(sub, now));
-  const plantDailyKwh =
-    context?.plantDailyKwh ?? (await readConfig()).plantDailyKwh;
+  const config = context
+    ? { capacityTh: context.capacityTh, satsPerThDay: context.satsPerThDay }
+    : await readConfig().then((c) => ({ capacityTh: c.capacityTh, satsPerThDay: c.settings.satsPerThDay }));
   const fits = holdsCapacity
     ? sql`1 = 1`
-    : sql`${reservedDailyKwhSql(now, sub.id)} + ${sub.dailyKwh} <= ${plantDailyKwh + EPS_KWH}`;
-  const kwh = order.kwh ?? sub.totalKwh / sub.months;
+    : sql`${reservedThSql(now, sub.id)} + ${sub.hashrateTh} <= ${config.capacityTh + EPS_TH}`;
+  const hashrateTh = order.hashrateTh ?? sub.hashrateTh;
   try {
     const res = await session.run(sql`
-      INSERT INTO plan_period (id, subscription_id, idx, starts_at, ends_at, kwh, amount_cop, tx_id, created_at)
-      SELECT ${newId("per-")}, ${sub.id}, ${window.index}, ${window.startsAt}, ${window.endsAt}, ${kwh}, ${order.amountCop}, ${order.id}, ${now}
+      INSERT INTO plan_period (id, subscription_id, idx, starts_at, ends_at, hashrate_th, sats_per_th_day, amount_cop, tx_id, created_at)
+      SELECT ${newId("per-")}, ${sub.id}, ${window.index}, ${window.startsAt}, ${window.endsAt}, ${hashrateTh}, ${config.satsPerThDay}, ${order.amountCop}, ${order.id}, ${now}
       WHERE ${fits}
     `);
     if (!res.rowsAffected) return "sin_cupo";

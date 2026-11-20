@@ -26,6 +26,11 @@ export function simulatedTxHash() {
   return `0x${randomHex(32)}`;
 }
 
+/** Txid simulado de un envío de BTC (64 caracteres hexadecimales), solo en modo de pruebas. */
+export function simulatedBtcTxid() {
+  return randomHex(32);
+}
+
 /** Código de un plan comprado, p. ej. PLN-7F3A21C9. */
 export function planCode() {
   return `PLN-${randomHex(4).toUpperCase()}`;

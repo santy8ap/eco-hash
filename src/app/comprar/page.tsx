@@ -13,9 +13,10 @@ import {
 } from "@/lib/navigation";
 import { getCatalog, getSubscription, stateOf } from "@/lib/plans/service";
 import { getSessionUser } from "@/lib/session";
+import { readConfig } from "@/lib/settings";
 
 export const metadata: Metadata = {
-  title: "Comprar energía",
+  title: "Comprar hashrate",
   robots: { index: false, follow: false },
 };
 
@@ -55,16 +56,16 @@ async function Purchase({ searchParams }: { searchParams: Promise<Params> }) {
     available =
       ["activa", "en_pausa"].includes(stateOf(sub)) &&
       sub.periods.length < sub.months;
-    const kwh = sub.totalKwh / sub.months;
+    const { settings } = await readConfig();
     request = {
       subscriptionId: sub.id,
       planName: sub.planName,
       periodIndex: sub.periods.length + 1,
       months: sub.months,
-      kwh,
-      amountCop: Math.round(kwh * sub.priceCopPerKwh),
-      priceCopPerKwh: sub.priceCopPerKwh,
-      saleCopPerKwh: sub.saleCopPerKwh,
+      hashrateTh: sub.hashrateTh,
+      amountCop: Math.round(sub.hashrateTh * sub.priceCopPerThMonth),
+      priceCopPerThMonth: sub.priceCopPerThMonth,
+      satsPerThDay: settings.satsPerThDay,
     };
   } else {
     const catalog = await getCatalog();
@@ -76,10 +77,10 @@ async function Purchase({ searchParams }: { searchParams: Promise<Params> }) {
       planName: p.name,
       periodIndex: 1,
       months: p.months,
-      kwh: p.monthlyKwh,
+      hashrateTh: p.hashrateTh,
       amountCop: p.monthlyCop,
-      priceCopPerKwh: p.priceCopPerKwh,
-      saleCopPerKwh: p.saleCopPerKwh,
+      priceCopPerThMonth: p.priceCopPerThMonth,
+      satsPerThDay: catalog.satsPerThDay,
     };
   }
   return (

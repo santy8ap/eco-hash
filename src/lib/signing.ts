@@ -1,19 +1,5 @@
 import { getAddress, isAddress, verifyMessage, type Hex } from "viem";
 import { BRAND } from "@/config/brand";
-import { formatCop, formatDateTime } from "@/lib/format";
-
-export function buildWithdrawalMessage(o: { code: string; amountCop: number; walletAddress: string; createdAt: number }) {
-  return [
-    `${BRAND.name} — Retiro de saldo`,
-    ``,
-    `Retiro: ${o.code}`,
-    `Monto: ${formatCop(o.amountCop)} COP`,
-    `Destino: ${o.walletAddress}`,
-    `Fecha: ${formatDateTime(o.createdAt)}`,
-    ``,
-    `Esta firma no mueve fondos: autoriza tu solicitud de retiro.`,
-  ].join("\n");
-}
 
 /**
  * Prueba de que la wallet que va a pagar con cripto es del usuario: sin ella, alguien podría

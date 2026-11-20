@@ -2,10 +2,10 @@ import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { companyProfile, ledgerTx, user } from "@/lib/db/schema";
-import { GRACE_MS } from "@/lib/energy/plan-math";
+import { GRACE_MS } from "@/lib/mining/plan-math";
 import { env } from "@/lib/env";
 import { collectedWhere } from "@/lib/payments/real-money";
-import { contractedDailyKwh, listAllSubscriptions } from "@/lib/plans/service";
+import { contractedTh, listAllSubscriptions } from "@/lib/plans/service";
 import { toSubscriptionDTO } from "@/lib/portfolio";
 import { TERMS_VERSION } from "@/lib/profile";
 import { hasPersonalDetails } from "@/lib/profile-schema";
@@ -47,9 +47,10 @@ export interface MonthStats {
   label: string;
   collectedCop: number;
   payments: number;
-  /** Energía de los meses pagados en este mes (kWh) */
-  soldKwh: number;
-  withdrawnCop: number;
+  /** Hashrate de los meses pagados en este mes (TH/s·mes) */
+  soldTh: number;
+  /** Sats enviados en retiros este mes */
+  withdrawnSats: number;
   newClients: number;
   newPlans: number;
 }
@@ -73,7 +74,7 @@ export interface BusinessAnalytics {
   months: MonthStats[];
   /** Recaudo de los últimos 12 meses por medio de pago, de mayor a menor */
   methods: { method: string; cop: number; payments: number }[];
-  totals: { collectedCop: number; payments: number; averageTicketCop: number; withdrawnCop: number };
+  totals: { collectedCop: number; payments: number; averageTicketCop: number; withdrawnSats: number };
   /** Cuántos clientes llegan a cada paso (sin la cuenta de pruebas) */
   funnel: { registered: number; withProfile: number; paid: number; active: number };
   /** Mensualidades que se vencen en los próximos 7 días */
@@ -89,7 +90,7 @@ export interface BusinessAnalytics {
   closedUnpaid30d: number;
   /** Mensualidades que deberían entrar en los próximos 30 días (en pausa y por vencer) */
   expectedNext30Cop: number;
-  capacity: { plantDailyKwh: number; contractedDailyKwh: number };
+  capacity: { capacityTh: number; contractedTh: number };
 }
 
 const RESERVING = new Set(["activa", "en_pausa", "en_revision"]);
@@ -100,18 +101,18 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
   const at = sql<number>`coalesce(${ledgerTx.confirmedAt}, ${ledgerTx.createdAt})`;
   const [payments, withdrawals, users, profiles, subs, config, contracted] = await Promise.all([
     db
-      .select({ at, amountCop: ledgerTx.amountCop, kwh: ledgerTx.kwh, method: ledgerTx.method, userId: ledgerTx.userId })
+      .select({ at, amountCop: ledgerTx.amountCop, hashrateTh: ledgerTx.hashrateTh, method: ledgerTx.method, userId: ledgerTx.userId })
       .from(ledgerTx)
       .where(and(eq(ledgerTx.kind, "plan_mes"), eq(ledgerTx.status, "confirmada"), collectedWhere())),
     db
-      .select({ at, amountCop: ledgerTx.amountCop })
+      .select({ at, amountSats: ledgerTx.amountSats })
       .from(ledgerTx)
       .where(and(eq(ledgerTx.kind, "retiro"), eq(ledgerTx.status, "confirmada"))),
     db.select({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt }).from(user),
     db.select().from(companyProfile),
     listAllSubscriptions(),
     readConfig(),
-    contractedDailyKwh(now),
+    contractedTh(now),
   ]);
 
   // La cuenta de pruebas no es un cliente.
@@ -124,7 +125,7 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
   };
 
   const byMonth = new Map<string, MonthStats>(
-    months.map((m) => [m, { month: m, label: monthLabel(m), collectedCop: 0, payments: 0, soldKwh: 0, withdrawnCop: 0, newClients: 0, newPlans: 0 }]),
+    months.map((m) => [m, { month: m, label: monthLabel(m), collectedCop: 0, payments: 0, soldTh: 0, withdrawnSats: 0, newClients: 0, newPlans: 0 }]),
   );
   const methods = new Map<string, { method: string; cop: number; payments: number }>();
   for (const p of payments) {
@@ -133,7 +134,7 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
     if (m) {
       m.collectedCop += p.amountCop;
       m.payments += 1;
-      m.soldKwh += p.kwh ?? 0;
+      m.soldTh += p.hashrateTh ?? 0;
     }
     const key = p.method ?? "otro";
     const row = methods.get(key) ?? { method: key, cop: 0, payments: 0 };
@@ -143,15 +144,15 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
   }
   for (const w of withdrawals) {
     const m = w.at >= from ? byMonth.get(monthKey(w.at)) : undefined;
-    if (m) m.withdrawnCop += w.amountCop;
+    if (m) m.withdrawnSats += w.amountSats ?? 0;
   }
   for (const u of clients) {
     const m = byMonth.get(monthKey(u.createdAt.getTime()));
     if (m) m.newClients += 1;
   }
 
-  const { solar, plantDailyKwh } = config;
-  const plans = subs.map((s) => ({ userId: s.userId, dto: toSubscriptionDTO(s, solar, now) }));
+  const { capacityTh } = config;
+  const plans = subs.map((s) => ({ userId: s.userId, dto: toSubscriptionDTO(s, now) }));
   // Un plan nuevo cuenta en el mes en que empezó su primer mes pagado.
   for (const { dto } of plans) {
     const first = dto.periods.length ? Math.min(...dto.periods.map((p) => p.startsAt)) : null;
@@ -207,7 +208,7 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
       collectedCop,
       payments: recent.length,
       averageTicketCop: recent.length ? Math.round(collectedCop / recent.length) : 0,
-      withdrawnCop: [...byMonth.values()].reduce((s, m) => s + m.withdrawnCop, 0),
+      withdrawnSats: [...byMonth.values()].reduce((s, m) => s + m.withdrawnSats, 0),
     },
     funnel: {
       registered: clients.length,
@@ -224,6 +225,6 @@ export async function businessAnalytics(now = Date.now()): Promise<BusinessAnaly
     closedUnpaid30d,
     expectedNext30Cop,
     // El mismo cálculo con el que se venden los planes (lib/plans/service).
-    capacity: { plantDailyKwh, contractedDailyKwh: contracted },
+    capacity: { capacityTh, contractedTh: contracted },
   };
 }

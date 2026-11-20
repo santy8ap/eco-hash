@@ -3,10 +3,10 @@ import { MIGRATIONS } from "./migrations.generated";
 import { hasOwnPreviewDatabase } from "./target";
 
 /**
- * Tabla donde se anota qué migraciones ya se aplicaron. Conserva el nombre de la marca anterior:
- * renombrarla haría que todas las migraciones se aplicaran de nuevo en las bases que ya existen.
+ * Tabla donde se anota qué migraciones ya se aplicaron.
+ * Si se renombra, todas las migraciones se aplican de nuevo en las bases que ya existen.
  */
-const TABLE = "__solaxy_migrations";
+const TABLE = "__ecohash_migrations";
 const LOCK_ID = "__lock";
 /** Un candado más viejo que esto es de una instancia que murió a mitad de camino: se toma el relevo. */
 const LOCK_STALE_MS = 120_000;

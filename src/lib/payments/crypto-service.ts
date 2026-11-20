@@ -64,7 +64,6 @@ export async function createCryptoQuote(
     /** …o el mes siguiente de un plan del usuario */
     subscriptionId?: string;
     expectedAmountCop?: number;
-    expectedSaleCopPerKwh?: number;
     asset: CryptoAsset;
     payer: string;
     walletName: string;
@@ -125,7 +124,7 @@ export async function createCryptoQuote(
     expiresAt,
     subscriptionId: p.subscriptionId,
     periodIndex: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
   });
   payLog("orden_creada", {
     proveedor: "crypto",
@@ -133,7 +132,7 @@ export async function createCryptoQuote(
     userId: input.userId,
     plan: p.subscriptionId,
     mes: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
     amountCop: p.amountCop,
     asset: input.asset,
     monto: formatUnits(baseUnits, 18),

@@ -48,7 +48,7 @@ export async function payWithTestPayment(
     method: "demo",
     subscriptionId: p.subscriptionId,
     periodIndex: p.periodIndex,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
   });
   const r = await fulfillOrder(orderId, { providerStatus: "prueba" }, { now });
   if (r.outcome !== "confirmada")

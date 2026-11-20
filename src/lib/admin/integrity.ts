@@ -3,13 +3,13 @@ import { sql } from "drizzle-orm";
 import { alertAdmin, alertMessages } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { ensureReady } from "@/lib/db/init";
-import { formatCop, formatNumber } from "@/lib/format";
+import { formatCop, formatHashrate, formatSats } from "@/lib/format";
 import { claimInterval } from "@/lib/jobs/claim";
-import { contractedDailyKwh, listAllSubscriptions } from "@/lib/plans/service";
+import { contractedTh, listAllSubscriptions } from "@/lib/plans/service";
 import { toSubscriptionDTO } from "@/lib/portfolio";
 import { readConfig } from "@/lib/settings";
 import { DAY_MS, HOUR_MS } from "@/lib/time";
-import { soldByUser, withdrawalsByUser } from "./service";
+import { minedByUser, withdrawalsByUser } from "./service";
 
 /**
  * El cuadre: revisa sobre los datos reales las reglas del dinero que las pruebas cubren en el código.
@@ -74,8 +74,8 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       LEFT JOIN plan_period p ON p.tx_id = t.id
       WHERE t.kind = 'plan_mes' AND t.status = 'confirmada' AND p.id IS NULL
       ORDER BY t.created_at DESC`),
-    // Un mes con energía cuyo pago no está confirmado. La excepción es una devolución ya registrada (payment_review),
-    // que corta la energía de ese mes y queda por conciliar.
+    // Un mes minando cuyo pago no está confirmado. La excepción es una devolución ya registrada (payment_review),
+    // que corta la minería de ese mes y queda por conciliar.
     db.all<Person & { txId: string; idx: number }>(sql`
       SELECT p.tx_id AS txId, p.idx AS idx, s.user_id AS userId, u.name AS name
       FROM plan_period p
@@ -92,8 +92,8 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       JOIN plan_subscription s ON s.id = a.subscription_id
       JOIN \`user\` u ON u.id = s.user_id
       ORDER BY a.created_at DESC`),
-    db.all<Person & { id: string; amountCop: number; createdAt: number }>(sql`
-      SELECT t.id AS id, t.user_id AS userId, u.name AS name, t.amount_cop AS amountCop, t.created_at AS createdAt
+    db.all<Person & { id: string; amountSats: number; createdAt: number }>(sql`
+      SELECT t.id AS id, t.user_id AS userId, u.name AS name, t.amount_sats AS amountSats, t.created_at AS createdAt
       FROM ledger_tx t JOIN \`user\` u ON u.id = t.user_id
       WHERE t.kind = 'retiro' AND t.status = 'por_aprobar' AND t.created_at < ${now - STALE_WITHDRAWAL_MS}
       ORDER BY t.created_at`),
@@ -113,12 +113,12 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
 
   // Saldos: con los mismos cálculos del Resumen y de Clientes. Una cuenta con una devolución por conciliar puede
   // quedar en negativo y ya está marcada en Pagos; las demás nunca deberían.
-  const { solar, plantDailyKwh } = await readConfig();
+  const { capacityTh } = await readConfig();
   const subs = await listAllSubscriptions();
-  const sold = soldByUser(subs, subs.map((s) => toSubscriptionDTO(s, solar, now)), solar, now);
+  const mined = minedByUser(subs, subs.map((s) => toSubscriptionDTO(s, now)), now);
   const underReview = new Set(reviewing.map((r) => r.userId));
   const shortBy = [...(await withdrawalsByUser())]
-    .map(([userId, m]) => ({ userId, deficit: m.withdrawn + m.reserved - (sold.get(userId) ?? 0) }))
+    .map(([userId, m]) => ({ userId, deficit: m.withdrawn + m.reserved - (mined.get(userId) ?? 0) }))
     .filter((r) => r.deficit > 0 && !underReview.has(r.userId));
   const names = shortBy.length
     ? new Map(
@@ -130,8 +130,8 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
         ).map((r) => [r.userId, r.name]),
       )
     : new Map<string, string>();
-  const contracted = await contractedDailyKwh(now);
-  const oversold = contracted > plantDailyKwh + 0.5 ? [contracted] : [];
+  const contracted = await contractedTh(now);
+  const oversold = contracted > capacityTh + 0.5 ? [contracted] : [];
 
   const checks: IntegrityCheck[] = [
     result(
@@ -139,17 +139,17 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       "error",
       "Cada pago confirmado activó su mes",
       paidWithoutMonth,
-      "Todos los pagos confirmados tienen su mes de energía.",
-      (n) => `${n} ${plural(n, "pago confirmado no tiene", "pagos confirmados no tienen")} su mes de energía: el cliente pagó y su energía no está contando. Revisa la orden en Pagos.`,
+      "Todos los pagos confirmados tienen su mes de minería.",
+      (n) => `${n} ${plural(n, "pago confirmado no tiene", "pagos confirmados no tienen")} su mes de minería: el cliente pagó y su hashrate no está minando. Revisa la orden en Pagos.`,
       paidWithoutMonth.map((r) => ({ label: `${r.name}: orden ${r.id} (${formatCop(r.amountCop)})`, href: pagos(r.id) })),
     ),
     result(
       "mes-sin-pago",
       "error",
-      "Cada mes de energía tiene su pago confirmado",
+      "Cada mes de minería tiene su pago confirmado",
       monthWithoutPayment,
-      "Ningún mes genera energía sin un pago confirmado.",
-      (n) => `${n} ${plural(n, "mes genera", "meses generan")} energía sin un pago confirmado ni una devolución registrada. Revisa la orden en Pagos.`,
+      "Ningún mes mina sin un pago confirmado.",
+      (n) => `${n} ${plural(n, "mes mina", "meses minan")} sin un pago confirmado ni una devolución registrada. Revisa la orden en Pagos.`,
       monthWithoutPayment.map((r) => ({ label: `${r.name}: mes ${r.idx}, orden ${r.txId}`, href: pagos(r.txId) })),
     ),
     result(
@@ -158,7 +158,7 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       "Los meses de un plan no se pisan",
       overlapping,
       "Ningún plan tiene dos meses al mismo tiempo.",
-      (n) => `${n} ${plural(n, "caso de dos meses", "casos de dos meses")} del mismo plan al mismo tiempo: esa energía se estaría contando dos veces.`,
+      (n) => `${n} ${plural(n, "caso de dos meses", "casos de dos meses")} del mismo plan al mismo tiempo: esos sats se estarían contando dos veces.`,
       overlapping.map((r) => ({ label: `${r.name}: ${r.subscriptionId}, meses ${r.first} y ${r.second}`, href: ficha(r.userId) })),
     ),
     result(
@@ -166,18 +166,18 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       "error",
       "Ningún saldo queda en negativo",
       shortBy,
-      "Lo retirado y lo apartado nunca supera la venta de la energía de cada cliente.",
-      (n) => `${n} ${plural(n, "cliente tiene", "clientes tienen")} más retirado y apartado que la venta de su energía, sin una devolución por conciliar que lo explique.`,
-      shortBy.map((r) => ({ label: `${names.get(r.userId) ?? r.userId}: faltan ${formatCop(r.deficit)}`, href: ficha(r.userId) })),
+      "Lo retirado y lo apartado nunca supera los sats minados de cada cliente.",
+      (n) => `${n} ${plural(n, "cliente tiene", "clientes tienen")} más sats retirados y apartados que los que ha minado, sin una devolución por conciliar que lo explique.`,
+      shortBy.map((r) => ({ label: `${names.get(r.userId) ?? r.userId}: faltan ${formatSats(r.deficit)}`, href: ficha(r.userId) })),
     ),
     result(
-      "cupo",
+      "capacidad",
       "error",
-      "La energía vendida cabe en la planta",
+      "El hashrate vendido cabe en la granja",
       oversold,
-      `Contratado ${formatNumber(Math.round(contracted))} de ${formatNumber(Math.round(plantDailyKwh))} kWh al día.`,
-      () => `Hay ${formatNumber(Math.round(contracted))} kWh al día contratados y la planta produce ${formatNumber(Math.round(plantDailyKwh))}. Revisa la potencia en Planta.`,
-      oversold.map(() => ({ label: "Planta", href: "/admin/planta" })),
+      `Contratado ${formatHashrate(contracted)} de ${formatHashrate(capacityTh)}.`,
+      () => `Hay ${formatHashrate(contracted)} contratados y la granja tiene ${formatHashrate(capacityTh)}. Revisa la capacidad en Granja.`,
+      oversold.map(() => ({ label: "Granja", href: "/admin/granja" })),
     ),
     result(
       "retiros-esperando",
@@ -186,7 +186,7 @@ export async function checkIntegrity(now = Date.now()): Promise<IntegrityReport>
       staleWithdrawals,
       "Ningún retiro lleva más de 3 días esperando.",
       (n) => `${n} ${plural(n, "retiro lleva", "retiros llevan")} más de 3 días esperando el envío. El saldo de esos clientes sigue apartado.`,
-      staleWithdrawals.map((r) => ({ label: `${r.name}: ${formatCop(r.amountCop)} (${r.id})`, href: "/admin/retiros" })),
+      staleWithdrawals.map((r) => ({ label: `${r.name}: ${formatSats(r.amountSats ?? 0)} (${r.id})`, href: "/admin/retiros" })),
     ),
     result(
       "transferencias-esperando",
