@@ -93,7 +93,7 @@ function IntegrityChecks() {
             Cuadre de los números
           </h3>
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-mute">
-            Revisa en los datos reales que cada pago tenga su mes de energía, que ningún saldo quede en negativo y que no haya pendientes olvidados. Corre solo cada día y, si algo
+            Revisa en los datos reales que cada pago tenga su mes de minería, que ningún saldo quede en negativo y que no haya pendientes olvidados. Corre solo cada día y, si algo
             no cuadra, les escribe a los propietarios.
           </p>
         </div>

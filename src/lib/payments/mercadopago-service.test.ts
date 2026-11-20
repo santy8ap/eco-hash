@@ -120,7 +120,7 @@ function notification(paymentId: number | string, secret = SECRET) {
   };
 }
 
-/** Pago mensual del Nonce: 60.000 kWh × $ 348. */
+/** Pago mensual del Nonce: 100 TH/s × $ 4.600. */
 const MONTH_180 = 460_000;
 
 async function periodsOf(subscriptionId: string | null) {

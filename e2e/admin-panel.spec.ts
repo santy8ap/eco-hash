@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const PAGES = ["/admin", "/admin/analisis", "/admin/clientes", "/admin/pagos", "/admin/retiros", "/admin/planta", "/admin/equipo", "/admin/configuracion", "/admin/actividad"];
+const PAGES = ["/admin", "/admin/analisis", "/admin/clientes", "/admin/pagos", "/admin/retiros", "/admin/granja", "/admin/equipo", "/admin/configuracion", "/admin/actividad"];
 
 test("administración sin PIN: el propietario entra con su cuenta, recorre todo y elige a su equipo", async ({ page }, info) => {
   const errors: string[] = [];

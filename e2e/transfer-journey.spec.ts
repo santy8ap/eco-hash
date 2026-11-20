@@ -64,13 +64,13 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   await expect(page.getByText("Cuenta para transferencias guardada.")).toBeVisible();
   await expect(settings.getByLabel("Número de cuenta")).toHaveValue("12345678901");
 
-  // 2. La empresa ve los datos, el valor exacto y la referencia, y reporta su comprobante.
-  await page.goto("/comprar?plan=p360");
+  // 2. El cliente ve los datos, el valor exacto y la referencia, y reporta su comprobante.
+  await page.goto("/comprar?plan=h250");
   await completeProfileIfAsked(page);
   await page.getByRole("button", { name: /Elegir medio de pago/i }).click();
   await page.getByText("Transferencia bancaria", { exact: true }).click();
   await expect(page.getByRole("button", { name: /Copiar número de cuenta: 12345678901/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Copiar valor exacto: .*40\.800\.000/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Copiar valor exacto: .*1\.112\.500/ })).toBeVisible();
   const referenceButton = page.getByRole("button", { name: /Copiar referencia: PLN-[0-9A-F]{8}-M1/ });
   await expect(referenceButton).toBeVisible();
   const reference = (await referenceButton.textContent())!.match(/PLN-[0-9A-F]{8}-M1/)![0];
@@ -82,7 +82,7 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   const response = await reported;
   expect(response.status()).toBe(201);
   const { order } = await response.json();
-  expect(order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: 40_800_000, txHash: "COMP-778899" });
+  expect(order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: 1_112_500, hashrateTh: 250, txHash: "COMP-778899" });
   await expect(page.getByText("Recibimos el aviso de tu transferencia.")).toBeVisible();
 
   // 3. El admin la encuentra en Pagos con la referencia y la confirma con la del banco.
@@ -116,16 +116,16 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   const reportFile = await (await report).path();
   const reportCsv = await readFile(reportFile!, "utf8");
   const lines = reportCsv.trim().split("\r\n");
-  expect(lines[0]).toContain("Energía vendida kWh");
+  expect(lines[0]).toContain("Hashrate vendido TH/s·mes");
   expect(lines).toHaveLength(13);
-  // El mes actual incluye la transferencia confirmada (Plan 360, $ 40.800.000).
+  // El mes actual incluye la transferencia confirmada (plan Bloque, $ 1.112.500).
   const current = lines[12].split(";").map((c) => c.replaceAll('"', ""));
-  expect(Number(current[1])).toBeGreaterThanOrEqual(40_800_000);
+  expect(Number(current[1])).toBeGreaterThanOrEqual(1_112_500);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: /Para atender/ })).toBeVisible();
   await expect(page.getByText("Transferencia por confirmar", { exact: true })).toHaveCount(0);
 
-  // 5. La empresa ve el mes confirmado en sus movimientos.
+  // 5. El cliente ve el mes confirmado en sus movimientos.
   await page.goto("/panel/billetera");
   const history = page.getByRole("region", { name: "Historial completo de movimientos" });
   await expect(history.getByText(order.id, { exact: false })).toBeVisible();
