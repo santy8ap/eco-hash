@@ -61,38 +61,12 @@ const nextConfig: NextConfig = {
       ...["/admin/:path*", "/admin", "/panel/:path*", "/panel", "/api/:path*", "/pagos/:path*", "/comprar"].map((source) => ({ source, headers: noIndex })),
     ];
   },
-  /** Rutas de la versión anterior (compra de kW): llevan a su equivalente de ahora. */
+  /** Un enlace viejo del estilo /comprar/h100 lleva a la compra con el plan elegido. */
   async redirects() {
     return [
-      { source: "/planes", destination: "/#planes", permanent: true },
-      { source: "/planta", destination: "/#reloj", permanent: true },
       {
         source: "/comprar/:plan",
         destination: "/comprar?plan=:plan",
-        permanent: false,
-      },
-      {
-        source: "/panel/planes",
-        has: [
-          {
-            type: "query",
-            key: "plan",
-            value: "(?<chosenPlan>p(?:720|540|360|180))",
-          },
-        ],
-        destination: "/comprar?plan=:chosenPlan",
-        permanent: false,
-      },
-      {
-        source: "/panel/mercado",
-        destination: "/panel/planes",
-        permanent: false,
-      },
-      { source: "/panel/telemetria", destination: "/panel", permanent: false },
-      { source: "/panel/socios", destination: "/panel", permanent: false },
-      {
-        source: "/admin/usuarios",
-        destination: "/admin/clientes",
         permanent: false,
       },
     ];

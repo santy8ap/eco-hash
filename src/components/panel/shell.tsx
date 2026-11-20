@@ -1,21 +1,13 @@
 "use client";
-import {
-  ArrowLeftRight,
-  LayoutDashboard,
-  LogOut,
-  LifeBuoy,
-  UserRound,
-  ShieldCheck,
-  SunMedium,
-} from "lucide-react";
+import { Cpu, LayoutDashboard, LifeBuoy, LogOut, ShieldCheck, UserRound, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { signOut } from "@/app/ingresar/actions";
 import { BRAND } from "@/config/brand";
 import { useAppConfig } from "@/lib/client/use-app-config";
-import { usePlantNow } from "@/lib/client/use-catalog";
-import { formatClock } from "@/lib/format";
+import { useNetwork } from "@/lib/client/use-network";
+import { formatCopCompact, formatNumber } from "@/lib/format";
 import { Logo } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeSelector } from "@/components/ui/theme-selector";
@@ -24,9 +16,9 @@ import { NotificationsLink } from "./notifications-link";
 
 export const NAV = [
   { href: "/panel", label: "Resumen", icon: LayoutDashboard },
-  { href: "/panel/planes", label: "Planes", icon: SunMedium },
-  { href: "/panel/billetera", label: "Movimientos", icon: ArrowLeftRight },
-  { href: "/panel/perfil", label: "Comercializador", icon: UserRound },
+  { href: "/panel/planes", label: "Planes", icon: Cpu },
+  { href: "/panel/billetera", label: "Billetera", icon: Wallet },
+  { href: "/panel/perfil", label: "Mis datos", icon: UserRound },
 ] as const;
 
 function isActive(path: string, href: string) {
@@ -34,35 +26,32 @@ function isActive(path: string, href: string) {
 }
 
 const itemClass = (active: boolean) =>
-  `flex items-center gap-3.5 border-l-2 py-3 pl-6 pr-4 text-[0.95rem] transition-colors ${active ? "border-ink text-ink" : "border-transparent text-mute hover:text-ink"}`;
+  `relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.95rem] transition-colors ${
+    active ? "bg-seam font-medium text-ink before:absolute before:-left-3 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-amber" : "text-mute hover:bg-seam/60 hover:text-ink"
+  }`;
 
 export function Sidebar() {
   const path = usePathname();
   const user = useUser();
   const [pending, start] = useTransition();
   return (
-    <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-line py-7 lg:flex" aria-label="Menú del panel">
-      <Link href="/" className="px-6" aria-label={`${BRAND.name}, inicio`}>
+    <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-line bg-raise px-4 py-6 lg:flex" aria-label="Menú del panel">
+      <Link href="/" className="px-3" aria-label={`${BRAND.name}, inicio`}>
         <Logo />
       </Link>
-      <nav className="mt-12 flex flex-col" aria-label="Panel">
+      <nav className="mt-10 flex flex-col gap-1" aria-label="Panel">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
           return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={itemClass(active)}
-            >
-              <Icon size={17} strokeWidth={1.5} />
+            <Link key={href} href={href} aria-current={active ? "page" : undefined} className={itemClass(active)}>
+              <Icon size={18} strokeWidth={1.7} className={active ? "text-amber-text" : undefined} />
               {label}
             </Link>
           );
         })}
       </nav>
-      <div className="mt-auto flex flex-col border-t border-line pt-4">
-        <Link href="/panel/perfil" className="mb-2 flex items-center gap-3 px-6 py-2 hover:opacity-80">
+      <div className="mt-auto flex flex-col gap-1 border-t border-line pt-4">
+        <Link href="/panel/perfil" className="mb-2 flex items-center gap-3 rounded-[10px] px-3 py-2 hover:bg-seam/60">
           <Avatar name={user.name} image={user.image} size={32} />
           <span className="min-w-0">
             <span className="sr-only">Mis datos: </span>
@@ -71,21 +60,16 @@ export function Sidebar() {
           </span>
         </Link>
         <Link href="/ayuda" className={itemClass(false)}>
-          <LifeBuoy size={17} /> Centro de ayuda
+          <LifeBuoy size={18} strokeWidth={1.7} /> Centro de ayuda
         </Link>
         {user.canAdmin && (
           <Link href="/admin" className={itemClass(false)}>
-            <ShieldCheck size={17} strokeWidth={1.5} />
+            <ShieldCheck size={18} strokeWidth={1.7} />
             Administración
           </Link>
         )}
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => start(() => signOut())}
-          className={`${itemClass(false)} text-left`}
-        >
-          <LogOut size={17} strokeWidth={1.5} />
+        <button type="button" disabled={pending} onClick={() => start(() => signOut())} className={`${itemClass(false)} text-left`}>
+          <LogOut size={18} strokeWidth={1.7} />
           {pending ? "Saliendo…" : "Salir"}
         </button>
       </div>
@@ -96,10 +80,7 @@ export function Sidebar() {
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-void/95 backdrop-blur-md lg:hidden"
-      aria-label="Panel"
-    >
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-raise/95 backdrop-blur-md lg:hidden" aria-label="Panel">
       <ul className="mx-auto grid max-w-[560px] grid-cols-4">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
@@ -108,12 +89,12 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1.5 border-t-2 pb-2.5 pt-2.5 text-[0.68rem] ${active ? "border-ink text-ink" : "border-transparent text-mute"}`}
+                className={`flex flex-col items-center gap-1 pb-2.5 pt-2.5 text-[0.7rem] ${active ? "text-ink" : "text-mute"}`}
               >
-                <Icon size={19} strokeWidth={1.5} />
-                <span className="max-w-full break-words px-1 text-center">
-                  {label}
+                <span className={`flex h-7 w-12 items-center justify-center rounded-full ${active ? "bg-amber-soft text-amber-text" : ""}`}>
+                  <Icon size={19} strokeWidth={1.7} />
                 </span>
+                <span className="max-w-full break-words px-1 text-center">{label}</span>
               </Link>
             </li>
           );
@@ -128,13 +109,13 @@ export function MobileBar() {
   const user = useUser();
   const [pending, start] = useTransition();
   return (
-    <header className="flex items-center justify-between border-b border-line px-4 py-4 lg:hidden">
+    <header className="flex items-center justify-between border-b border-line bg-raise px-4 py-3 lg:hidden">
       <Link href="/" aria-label={`${BRAND.name}, inicio`}>
         <Logo />
       </Link>
-      <div className="flex items-center gap-2 text-sm text-mute sm:gap-4">
+      <div className="flex items-center gap-2 text-sm text-mute sm:gap-3">
         <Link href="/panel/perfil" className="hover:opacity-80">
-          <Avatar name={user.name} image={user.image} size={26} />
+          <Avatar name={user.name} image={user.image} size={28} />
           <span className="sr-only">Mis datos, {user.name}</span>
         </Link>
         <NotificationsLink />
@@ -143,12 +124,7 @@ export function MobileBar() {
             Admin
           </Link>
         )}
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => start(() => signOut())}
-          className="hover:text-ink"
-        >
+        <button type="button" disabled={pending} onClick={() => start(() => signOut())} className="hover:text-ink">
           {pending ? "Saliendo…" : "Salir"}
         </button>
         <ThemeSelector />
@@ -162,40 +138,42 @@ export function TestModeBar() {
   const { config } = useAppConfig();
   if (!config?.demoMode) return null;
   return (
-    <section aria-label="Modo de pruebas" className="border-b border-line bg-ink px-4 py-1.5 text-center text-xs font-medium text-void">
-      <p>Pago de prueba habilitado. Consulta el medio de cada pago en Movimientos.</p>
+    <section aria-label="Modo de pruebas" className="border-b border-amber/30 bg-amber-soft px-4 py-1.5 text-center text-xs font-medium text-amber-text">
+      <p>Modo de pruebas: los pagos de prueba no mueven dinero real. Cada movimiento dice con qué medio se pagó.</p>
     </section>
   );
 }
 
-export function Topbar({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle?: string;
-}) {
-  const now = usePlantNow(1000);
+/** La red Bitcoin en una línea: el último bloque y el precio del BTC. */
+export function NetworkTicker({ className = "" }: { className?: string }) {
+  const { data } = useNetwork();
+  const reference = data?.network.source === "referencia";
+  return (
+    <p className={`flex items-center gap-3 text-sm text-mute ${className}`} aria-label="Red Bitcoin">
+      <span className="live-dot" data-tone={!data ? "off" : reference ? "wait" : undefined} />
+      <span>
+        Bloque <span className="num text-ink">{data ? formatNumber(data.network.height) : "…"}</span>
+      </span>
+      <span className="hidden sm:inline">
+        BTC <span className="num text-ink">{data ? formatCopCompact(data.btc.cop) : "…"}</span>
+      </span>
+      {reference && <span className="text-xs">(referencia)</span>}
+    </p>
+  );
+}
+
+export function Topbar({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pb-8">
-      <div>
-        <h1 className="display text-[clamp(2.75rem,6vw,4.25rem)]">{title}</h1>
-        {subtitle && <p className="mt-3 max-w-[60ch] text-fog">{subtitle}</p>}
+      <div className="min-w-0">
+        <h1 className="display text-[clamp(2rem,4.4vw,3rem)]">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-[60ch] text-fog">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-4">
-        <Link href="/ayuda" className="link text-sm text-mute">
-          Ayuda
-        </Link>
+      <div className="flex items-center gap-3">
+        <NetworkTicker />
         <span className="hidden lg:block">
           <NotificationsLink />
         </span>
-        <p
-          className="flex items-center gap-3 text-sm text-mute"
-          aria-label="Hora en la planta"
-        >
-          <span className="live-dot" />
-          <span className="num">{now ? formatClock(now) : " "}</span>
-        </p>
         <div className="hidden lg:block">
           <ThemeSelector />
         </div>

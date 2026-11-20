@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { Geologica, Martian_Mono } from "next/font/google";
 import { BRAND } from "@/config/brand";
 import { baseUrl } from "@/lib/env";
 import { VercelAnalytics } from "@/components/analytics/vercel";
@@ -7,18 +7,19 @@ import { ThemeProvider } from "@/context/theme-context";
 import { DEFAULT_THEME, themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
-/** Archivo con el eje de ancho: la versión condensada (62 %) es la voz de los titulares y las cifras. */
-const archivo = Archivo({
-  variable: "--font-archivo",
+/** Geologica con su eje de filo (SHRP): los titulares tienen un corte de mineral; el texto, ninguno. */
+const geologica = Geologica({
+  variable: "--font-geologica",
   subsets: ["latin", "latin-ext"],
-  axes: ["wdth"],
+  axes: ["SHRP"],
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+/** Martian Mono, más angosta (eje de ancho), para hashes, sats y cifras que cambian. */
+const martian = Martian_Mono({
+  variable: "--font-martian",
   subsets: ["latin", "latin-ext"],
-  weight: ["300", "400", "500"],
+  axes: ["wdth"],
   display: "swap",
 });
 
@@ -58,7 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es-CO"
       data-theme={DEFAULT_THEME}
       suppressHydrationWarning
-      className={`${archivo.variable} ${plexMono.variable} h-full`}
+      className={`${geologica.variable} ${martian.variable} h-full`}
     >
       <head>
         <script id="ech-theme" dangerouslySetInnerHTML={{ __html: themeBootScript }} />

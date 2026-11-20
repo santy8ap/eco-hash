@@ -1,37 +1,28 @@
 import { BRAND } from "@/config/brand";
 
-/** El disco del eclipse también aparece en el reloj solar. */
-export function LogoMark({ size = 26, className = "" }: { size?: number; className?: string }) {
+/**
+ * La marca: un bloque ámbar con un «#» (hash) cuyo trazo superior es una ola: la minería y el agua que la mueve.
+ */
+export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <circle cx="16" cy="16" r="14.5" fill="none" stroke="currentColor" strokeOpacity="0.22" />
-      <circle cx="16" cy="16" r="9.5" fill="var(--color-disc)" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="1.5" y="1.5" width="29" height="29" rx="8.5" fill="var(--color-amber)" />
+      <g fill="none" stroke="var(--color-amber-ink)" strokeWidth="2.6" strokeLinecap="round">
+        <path d="M13.2 8.6 11.4 23.4" />
+        <path d="M20.6 8.6 18.8 23.4" />
+        <path d="M8.2 13.6q3.9-2.9 7.8 0t7.8 0" />
+        <path d="M8 19.2h15.8" />
+      </g>
     </svg>
   );
 }
 
-/** Marca con el nombre en dos líneas: cabe en la barra lateral y en el celular. */
 export function Logo({ className = "", size = "compact" }: { className?: string; size?: "compact" | "header" }) {
-  const [first, ...rest] = BRAND.name.toUpperCase().split(" ");
-  const split = rest.length > 1;
   const header = size === "header";
   return (
-    <span className={`inline-flex items-center text-ink ${header ? "gap-2.5 sm:gap-3" : "gap-3"} ${className}`}>
-      <LogoMark size={header ? 48 : 26} className={header ? "size-9 shrink-0 sm:size-12" : undefined} />
-      <span className={header
-        ? "whitespace-nowrap text-[0.8125rem] font-semibold leading-tight tracking-[0.14em] sm:text-[0.9375rem] sm:tracking-[0.18em]"
-        : "text-[0.6875rem] font-medium leading-[1.35] tracking-[0.3em]"}>
-        {split ? (
-          <>
-            <span className="block">
-              {first} {rest.slice(0, -1).join(" ")}
-            </span>{" "}
-            <span className={header ? "block text-[0.85em] tracking-[0.27em]" : "block"}>{rest.at(-1)}</span>
-          </>
-        ) : (
-          BRAND.name.toUpperCase()
-        )}
-      </span>
+    <span className={`inline-flex items-center gap-2.5 text-ink ${className}`}>
+      <LogoMark size={header ? 34 : 28} />
+      <span className={`display font-semibold tracking-[-0.03em] ${header ? "text-[1.3rem]" : "text-[1.12rem]"}`}>{BRAND.name}</span>
     </span>
   );
 }

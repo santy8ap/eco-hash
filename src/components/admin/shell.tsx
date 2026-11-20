@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeftCircle, Banknote, Building2, ChartColumn, CreditCard, Ellipsis, History, LayoutGrid, LogOut, Settings2, ShieldCheck, SunMedium, UsersRound } from "lucide-react";
+import { ArrowLeftCircle, Bitcoin, Building2, ChartColumn, CreditCard, Ellipsis, Factory, History, LayoutGrid, LogOut, Settings2, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -7,8 +7,6 @@ import { signOut } from "@/app/ingresar/actions";
 import { BRAND } from "@/config/brand";
 import { ADMIN_ROLE_LABEL } from "@/lib/admin/roles";
 import { useJson } from "@/lib/client/use-json";
-import { usePlantNow } from "@/lib/client/use-catalog";
-import { formatClock } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { Logo } from "@/components/ui/logo";
 import { ThemeSelector } from "@/components/ui/theme-selector";
@@ -19,8 +17,8 @@ export const ADMIN_NAV = [
   { href: "/admin/analisis", label: "Análisis", icon: ChartColumn },
   { href: "/admin/clientes", label: "Clientes", icon: Building2 },
   { href: "/admin/pagos", label: "Pagos", icon: CreditCard },
-  { href: "/admin/retiros", label: "Retiros", icon: Banknote },
-  { href: "/admin/planta", label: "Planta", icon: SunMedium },
+  { href: "/admin/retiros", label: "Retiros", icon: Bitcoin },
+  { href: "/admin/granja", label: "Granja", icon: Factory },
   { href: "/admin/equipo", label: "Equipo", icon: UsersRound },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings2 },
   { href: "/admin/actividad", label: "Actividad", icon: History },
@@ -40,11 +38,13 @@ function usePending() {
 }
 
 const itemClass = (active: boolean) =>
-  `flex items-center gap-3.5 border-l-2 py-3 pl-6 pr-4 text-[0.95rem] transition-colors ${active ? "border-ink text-ink" : "border-transparent text-mute hover:text-ink"}`;
+  `relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.95rem] transition-colors ${
+    active ? "bg-seam font-medium text-ink before:absolute before:-left-3 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-amber" : "text-mute hover:bg-seam/60 hover:text-ink"
+  }`;
 
 function Count({ n }: { n: number }) {
   if (!n) return null;
-  return <span className="num ml-auto bg-ink px-1.5 py-0.5 text-xs font-medium text-void">{n}</span>;
+  return <span className="num ml-auto rounded-full bg-amber px-2 py-0.5 text-xs font-medium text-amber-ink">{n}</span>;
 }
 
 export function AdminSidebar() {
@@ -53,19 +53,19 @@ export function AdminSidebar() {
   const user = useUser();
   const [out, startOut] = useTransition();
   return (
-    <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-line py-7 lg:flex" aria-label="Menú de administración">
-      <Link href="/" className="px-6" aria-label={`${BRAND.name}, inicio`}>
+    <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-raise px-4 py-6 lg:flex" aria-label="Menú de administración">
+      <Link href="/" className="px-3" aria-label={`${BRAND.name}, inicio`}>
         <Logo />
       </Link>
-      <p className="cap mt-6 flex items-center gap-2 px-6 !text-ink">
-        <ShieldCheck size={14} strokeWidth={1.5} /> Administración
+      <p className="cap mt-5 flex items-center gap-2 px-3 !text-amber-text">
+        <ShieldCheck size={14} strokeWidth={1.7} /> Administración
       </p>
-      <nav className="mt-7 flex flex-col" aria-label="Administración">
+      <nav className="mt-6 flex flex-col gap-1" aria-label="Administración">
         {ADMIN_NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined} className={itemClass(active)}>
-              <Icon size={17} strokeWidth={1.5} />
+              <Icon size={18} strokeWidth={1.7} className={active ? "text-amber-text" : undefined} />
               {label}
               {href === "/admin/retiros" && <Count n={pending.retiros} />}
               {href === "/admin/pagos" && <Count n={pending.pagos} />}
@@ -83,11 +83,11 @@ export function AdminSidebar() {
           </span>
         </div>
         <Link href="/panel" className={itemClass(false)}>
-          <ArrowLeftCircle size={17} strokeWidth={1.5} />
-          Ver como comercializador
+          <ArrowLeftCircle size={18} strokeWidth={1.7} />
+          Ir a mi panel de cliente
         </Link>
         <button type="button" disabled={out} onClick={() => startOut(() => signOut())} className={`${itemClass(false)} text-left`}>
-          <LogOut size={17} strokeWidth={1.5} />
+          <LogOut size={18} strokeWidth={1.7} />
           {out ? "Cerrando sesión…" : "Cerrar sesión"}
         </button>
       </div>
@@ -124,11 +124,11 @@ export function AdminBottomNav() {
     };
   }, [more]);
 
-  const cell = (active: boolean) => `relative flex w-full flex-col items-center gap-1.5 border-t-2 pb-2.5 pt-2.5 text-[0.62rem] ${active ? "border-ink text-ink" : "border-transparent text-mute"}`;
+  const cell = (active: boolean) => `relative flex w-full flex-col items-center gap-1 pb-2.5 pt-2.5 text-[0.66rem] ${active ? "text-amber-text" : "text-mute"}`;
   return (
     <div ref={sheet} className="lg:hidden">
       {more && (
-        <div id="admin-more" className="fixed inset-x-0 bottom-[60px] z-40 border-t border-line-strong bg-void/98 pb-2 backdrop-blur-md">
+        <div id="admin-more" className="fixed inset-x-0 bottom-[60px] z-40 border-t border-line-strong bg-raise/98 px-3 pb-2 backdrop-blur-md">
           <p className="mx-auto max-w-[640px] truncate border-b border-line px-6 py-3 text-xs text-mute">
             {user.email}
             {user.adminRole && <span className="cap ml-2 !text-ink">{ADMIN_ROLE_LABEL[user.adminRole]}</span>}
@@ -137,27 +137,27 @@ export function AdminBottomNav() {
             {rest.map(({ href, label, icon: Icon }) => (
               <li key={href}>
                 <Link href={href} aria-current={isActive(path, href) ? "page" : undefined} className={itemClass(isActive(path, href))}>
-                  <Icon size={17} strokeWidth={1.5} />
+                  <Icon size={18} strokeWidth={1.7} />
                   {label}
                 </Link>
               </li>
             ))}
             <li className="border-t border-line">
               <Link href="/panel" className={itemClass(false)}>
-                <ArrowLeftCircle size={17} strokeWidth={1.5} />
-                Ver como comercializador
+                <ArrowLeftCircle size={18} strokeWidth={1.7} />
+                Ir a mi panel de cliente
               </Link>
             </li>
             <li>
               <button type="button" disabled={out} onClick={() => startOut(() => signOut())} className={`${itemClass(false)} w-full text-left`}>
-                <LogOut size={17} strokeWidth={1.5} />
+                <LogOut size={18} strokeWidth={1.7} />
                 {out ? "Cerrando sesión…" : "Cerrar sesión"}
               </button>
             </li>
           </ul>
         </div>
       )}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-void/95 backdrop-blur-md" aria-label="Administración">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line-strong bg-raise/95 backdrop-blur-md" aria-label="Administración">
         <ul className="mx-auto grid max-w-[640px] grid-cols-5">
           {main.map(({ href, label, icon: Icon }) => {
             const active = isActive(path, href);
@@ -165,9 +165,9 @@ export function AdminBottomNav() {
             return (
               <li key={href}>
                 <Link href={href} aria-current={active ? "page" : undefined} className={cell(active)}>
-                  <Icon size={19} strokeWidth={1.5} />
+                  <Icon size={19} strokeWidth={1.7} />
                   {label}
-                  {dot && <span role="img" className="absolute right-[24%] top-2 h-1.5 w-1.5 bg-ink" aria-label="Hay pendientes" />}
+                  {dot && <span role="img" className="absolute right-[24%] top-2 h-2 w-2 rounded-full bg-amber" aria-label="Hay pendientes" />}
                 </Link>
               </li>
             );
@@ -189,7 +189,7 @@ export function AdminMobileBar() {
   const [out, startOut] = useTransition();
   const user = useUser();
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-4 lg:hidden">
+    <header className="flex items-center justify-between gap-3 border-b border-line bg-raise px-4 py-3 lg:hidden">
       <Link href="/" aria-label={`${BRAND.name}, inicio`}>
         <Logo />
       </Link>
@@ -201,7 +201,7 @@ export function AdminMobileBar() {
           </span>
         )}
         <Link href="/panel" className="hover:text-ink">
-          Comercializador
+          Mi panel
         </Link>
         <button type="button" disabled={out} onClick={() => startOut(() => signOut())} className="hover:text-ink">
           {out ? "Saliendo…" : "Salir"}
@@ -213,18 +213,16 @@ export function AdminMobileBar() {
 }
 
 export function AdminTopbar({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
-  const now = usePlantNow(1000);
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 pb-8">
       <div>
         <p className="cap mb-3 flex items-center gap-2 lg:hidden">
           <ShieldCheck size={13} strokeWidth={1.5} /> Administración
         </p>
-        <h1 className="display text-[clamp(2.75rem,6vw,4.25rem)]">{title}</h1>
-        {subtitle && <p className="mt-3 max-w-[64ch] text-fog">{subtitle}</p>}
+        <h1 className="display text-[clamp(2rem,4.4vw,3rem)]">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-[64ch] text-fog">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-5">
-        <span className="num hidden text-sm text-mute md:inline">{now ? formatClock(now) : ""}</span>
+      <div className="flex items-center gap-4">
         {action}
         <div className="hidden lg:block">
           <ThemeSelector />
@@ -242,7 +240,7 @@ export function AdminNotAuthorized({ email }: { email: string }) {
       <p className="cap flex items-center gap-2">
         <ShieldCheck size={13} strokeWidth={1.5} /> Administración
       </p>
-      <h1 className="display mt-4 text-[clamp(2.75rem,8vw,4rem)]">Sin acceso</h1>
+      <h1 className="display mt-4 text-[clamp(2.25rem,6vw,3rem)]">Sin acceso</h1>
       <p className="mt-5 leading-relaxed text-fog">
         Entraste con <strong className="font-medium text-ink">{email}</strong>, y ese correo no tiene acceso a la administración. Si debes tenerlo, pídele a un propietario que lo agregue en
         Administración › Equipo.

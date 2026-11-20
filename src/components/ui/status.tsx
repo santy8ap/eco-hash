@@ -4,8 +4,8 @@ import { TX_STATUS_LABEL } from "@/lib/labels";
 export type StatusTone = "ok" | "wait" | "off" | "act";
 
 /**
- * Estado sin color: ✓ confirmado, anillo punteado en proceso, tachado si no ocurrió,
- * y relleno invertido cuando alguien tiene que hacer algo.
+ * Estado con color y forma: ✓ en verde si está bien, anillo punteado en ámbar si está en proceso, ✕ tenue si no
+ * ocurrió y alerta en coral cuando alguien tiene que hacer algo. El texto siempre dice el estado.
  */
 export function Status({
   tone,
@@ -49,7 +49,7 @@ export const TX_STATUS: Record<string, { label: string; tone: StatusTone }> = {
 
 /** Cómo se muestra el estado de un plan. */
 export const PLAN_STATE: Record<string, { label: string; tone: StatusTone }> = {
-  activa: { label: "Generando", tone: "ok" },
+  activa: { label: "Minando", tone: "ok" },
   en_pausa: { label: "En pausa", tone: "act" },
   completada: { label: "Completado", tone: "ok" },
   vencida: { label: "Cerrado", tone: "off" },

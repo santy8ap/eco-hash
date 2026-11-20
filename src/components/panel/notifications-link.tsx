@@ -8,13 +8,13 @@ export function NotificationsLink() {
   return (
     <Link
       href="/panel/avisos"
-      className="relative inline-flex h-10 w-10 items-center justify-center border border-line text-fog transition-colors hover:border-fog hover:text-ink"
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-line-strong text-fog transition-colors hover:border-fog hover:text-ink"
       aria-label={unread ? `Avisos: ${unread} sin leer` : "Mis avisos"}
     >
       <Bell size={17} />
       {unread > 0 && (
         <span
-          className="num absolute -right-1 -top-1 min-w-4 bg-ink px-1 text-center text-[0.6rem] leading-4 text-void"
+          className="num absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-amber px-1 text-center text-[0.62rem] leading-[18px] text-amber-ink"
           aria-hidden="true"
         >
           {unread > 99 ? "99+" : unread}
