@@ -37,7 +37,7 @@ async function pending() {
     amountCop: p.amountCop,
     subscriptionId: p.subscriptionId,
     periodIndex: 1,
-    kwh: p.kwh,
+    hashrateTh: p.hashrateTh,
     createdAt: Date.now(),
   });
   return { id, subscriptionId: p.subscriptionId };

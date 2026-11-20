@@ -244,7 +244,7 @@ async function recordDuplicatePayment(order: OrderRow, payment: MpPayment) {
       providerStatus: payment.status,
       expectedAmount: order.expectedAmount,
     }).returning();
-    // El dinero entró dos veces: el admin debe devolverlo y el comercializador saberlo.
+    // El dinero entró dos veces: el admin debe devolverlo y el cliente saberlo.
     alertPaymentToRefund(dup);
     emailPaymentToRefund(dup);
     payLog("pago_duplicado", {

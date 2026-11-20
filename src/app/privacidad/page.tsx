@@ -22,17 +22,17 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          Esta política describe el tratamiento de los datos personales que proporcionas al registrarte como comercializador y comprar planes de energía en {BRAND.name}.
+          Esta política describe el tratamiento de los datos personales que proporcionas al registrarte como cliente y comprar planes de hashrate en {BRAND.name}.
         </p>
         <ul>
           <li>
-            <strong>Comercializador:</strong> nombre completo, tipo y número de documento, celular y ciudad de residencia.
+            <strong>Cliente:</strong> nombre completo, tipo y número de documento, celular y ciudad de residencia.
           </li>
           <li>
             <strong>Cuenta de Google:</strong> nombre, correo y foto de perfil, que Google nos comparte cada vez que ingresas. La foto se muestra en tu panel.
           </li>
           <li>
-            <strong>Operaciones del comercializador:</strong> planes comprados, pagos y retiros; referencias de pago de Mercado Pago; números de comprobante y referencias de las transferencias
+            <strong>Operaciones del cliente:</strong> planes comprados, pagos y retiros; referencias de pago de Mercado Pago; números de comprobante y referencias de las transferencias
             bancarias que nos reportas; direcciones públicas de wallet y hashes de transacciones; banco, tipo y número de la cuenta a la que se pagan los retiros. No recibimos ni guardamos los datos
             de tu tarjeta.
           </li>
@@ -55,8 +55,8 @@ const SECTIONS: LegalSection[] = [
     title: "Para qué los usamos",
     body: (
       <ul>
-        <li>Crear y administrar la cuenta del comercializador y registrar sus planes de energía.</li>
-        <li>Procesar los pagos, calcular la energía y el saldo de cada plan y pagar los retiros.</li>
+        <li>Crear y administrar la cuenta del cliente y registrar sus planes de hashrate.</li>
+        <li>Procesar los pagos, calcular los sats minados y el saldo de cada plan y enviar los retiros en BTC.</li>
         <li>Cumplir obligaciones legales, contables y tributarias, y las de prevención de lavado de activos y financiación del terrorismo.</li>
         <li>Prevenir fraudes y proteger la seguridad de la plataforma.</li>
         <li>
@@ -139,7 +139,7 @@ const SECTIONS: LegalSection[] = [
     title: "Seguridad y conservación",
     body: (
       <p>
-        Protegemos los datos con conexiones cifradas, accesos restringidos y un registro de lo que hace cada administrador. Los conservamos mientras el comercializador tenga una cuenta y luego por el
+        Protegemos los datos con conexiones cifradas, accesos restringidos y un registro de lo que hace cada administrador. Los conservamos mientras el cliente tenga una cuenta y luego por el
         tiempo que exijan las normas contables, tributarias y de prevención de lavado de activos.
       </p>
     ),

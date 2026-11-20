@@ -9,7 +9,7 @@ import { SupportContacts } from "@/components/support/support-contacts";
 
 export const metadata: Metadata = {
   title: "Centro de ayuda",
-  description: "Ayuda con compras de energía, pagos, mensualidades y retiros.",
+  description: "Ayuda con planes de hashrate, pagos, mensualidades y retiros en BTC.",
 };
 
 async function Contacts({
@@ -29,7 +29,7 @@ export default function HelpPage({ searchParams }: PageProps<"/ayuda">) {
   return (
     <>
       <header className="border-b border-line">
-        <div className="mx-auto flex h-20 max-w-[1100px] items-center justify-between px-5">
+        <div className="mx-auto flex h-[72px] max-w-[1100px] items-center justify-between px-4 sm:px-8">
           <Link href="/" aria-label={`${BRAND.name}, inicio`}>
             <Logo />
           </Link>
@@ -39,19 +39,18 @@ export default function HelpPage({ searchParams }: PageProps<"/ayuda">) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1100px] px-5 pb-24 pt-12 sm:pt-20">
-        <p className="cap">Estamos para ayudarte</p>
-        <h1 className="display mt-4 max-w-[16ch] text-[clamp(3rem,8vw,6.5rem)]">
-          Tu energía, con respuestas.
+      <main className="mx-auto max-w-[1100px] px-4 pb-24 pt-12 sm:px-8 sm:pt-16">
+        <h1 className="display max-w-[18ch] text-[clamp(2.4rem,6vw,3.6rem)]">
+          ¿En qué te ayudamos?
         </h1>
         <p className="mt-6 max-w-[62ch] text-lg leading-relaxed text-fog">
           Consulta el estado de tu compra y encuentra los pasos para resolver
-          dudas sobre pagos, planes y retiros.
+          dudas sobre pagos, planes y retiros en BTC.
         </p>
         <Suspense fallback={<div className="skeleton mt-10 h-24" />}>
           <Contacts searchParams={searchParams as Promise<{ ref?: string }>} />
         </Suspense>
-        <div className="mt-12 grid gap-x-12 sm:grid-cols-2">
+        <div className="mt-10 grid gap-3 sm:grid-cols-2">
           {[
             [
               "Mi pago sigue pendiente",
@@ -66,6 +65,12 @@ export default function HelpPage({ searchParams }: PageProps<"/ayuda">) {
               "Ver mis planes",
             ],
             [
+              "Pedí un retiro y no me ha llegado",
+              "Cada retiro lo revisa el equipo antes de enviarlo. Cuando sale, verás el txid en tus movimientos y podrás seguirlo en mempool.space hasta que la red lo confirme.",
+              "/panel/billetera",
+              "Ver mis retiros",
+            ],
+            [
               "Necesito mi comprobante",
               "Puedes descargar el PDF de un pago o retiro confirmado desde el historial de movimientos.",
               "/panel/billetera",
@@ -73,13 +78,13 @@ export default function HelpPage({ searchParams }: PageProps<"/ayuda">) {
             ],
             [
               "Necesito actualizar mis datos",
-              "Actualiza tu nombre, documento, celular o ciudad desde tu perfil de comercializador.",
+              "Actualiza tu nombre, documento, celular o ciudad desde tu perfil de cliente.",
               "/panel/perfil",
               "Revisar mis datos",
             ],
           ].map(([title, detail, href, action]) => (
-            <section key={title} className="border-t border-line py-8">
-              <h2 className="text-xl font-medium">{title}</h2>
+            <section key={title} className="panel p-6">
+              <h2 className="text-lg font-semibold">{title}</h2>
               <p className="mt-3 leading-relaxed text-fog">{detail}</p>
               <Link href={href} className="link mt-5 inline-block text-sm">
                 {action}

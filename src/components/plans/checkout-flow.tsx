@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { BRAND } from "@/config/brand";
 import type { CheckoutRequest } from "@/lib/checkout";
-import { DAYS_PER_MONTH } from "@/lib/energy/plan-math";
-import { formatCop, formatDateTime, formatNumber } from "@/lib/format";
+import { DAYS_PER_MONTH } from "@/lib/mining/plan-math";
+import { formatCop, formatDateTime, formatHashprice, formatSats, formatTh } from "@/lib/format";
 import type { TxDTO } from "@/lib/portfolio";
 import type { ProfileDTO } from "@/lib/profile";
 import { WalletProvider } from "@/lib/wallet/context";
@@ -24,7 +24,7 @@ import { CheckoutProgress } from "./checkout-progress";
 import { PriceBreakdown } from "./price-breakdown";
 
 const TITLES = [
-  "Tus datos, tu energía.",
+  "Tus datos, tu minería.",
   "Así es tu plan.",
   "Un paso para empezar.",
   "Pago confirmado",
@@ -85,7 +85,7 @@ function Purchase({
   return (
     <div className="min-h-dvh bg-void">
       <header className="border-b border-line">
-        <div className="mx-auto flex min-h-[80px] max-w-[1240px] items-center justify-between gap-4 px-5 sm:px-8">
+        <div className="mx-auto flex min-h-[72px] max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-8">
           <Link href="/" aria-label={`${BRAND.name}, inicio`}>
             <Logo />
           </Link>
@@ -102,22 +102,22 @@ function Purchase({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1240px] px-5 pb-20 pt-8 sm:px-8 sm:pt-12">
+      <main className="mx-auto max-w-[1200px] px-4 pb-20 pt-8 sm:px-8 sm:pt-12">
         <p className="cap mb-7">
-          {request.subscriptionId ? "Mensualidad del plan" : "Tu compra de energía"} · {request.planName}
+          {request.subscriptionId ? `Mensualidad del plan ${request.planName}` : `Compra del plan ${request.planName}`}
         </p>
         {available && <CheckoutProgress current={step} />}
         {!available ? (
           <section className="py-16">
-            <h1 className="display text-5xl">
+            <h1 className="display text-4xl">
               {request.subscriptionId
                 ? "Mensualidad no disponible"
-                : "Plan sin cupo"}
+                : "Plan sin capacidad"}
             </h1>
             <p className="mt-5 max-w-[55ch] leading-relaxed text-fog">
               {request.subscriptionId
                 ? "Este plan ya no admite esa mensualidad. Consulta su estado en tus planes."
-                : "Consulta los planes con cupo para continuar."}
+                : "La granja no tiene capacidad libre para este plan ahora. Mira los planes disponibles para continuar."}
             </p>
             <Link href="/panel/planes" className="btn btn-solid mt-8">
               {request.subscriptionId ? "Ver mis planes" : "Ver planes disponibles"}
@@ -132,7 +132,7 @@ function Purchase({
               <h1
                 ref={title}
                 tabIndex={-1}
-                className="display scroll-mt-8 text-[clamp(2.8rem,6vw,5rem)] outline-none"
+                className="display scroll-mt-8 text-[clamp(2.2rem,4.6vw,3.4rem)] outline-none"
               >
                 {TITLES[step - 1]}
               </h1>
@@ -203,22 +203,21 @@ function Purchase({
               {step === 2 && (
                 <>
                   <p className="mt-5 max-w-[56ch] leading-relaxed text-fog">
-                    Revisa el precio de compra, el valor de venta y la utilidad
-                    bruta de tu plan. Hoy pagas únicamente el mes{" "}
-                    {request.periodIndex} de {request.months}.
+                    Revisa la mensualidad y lo que se estima minar. Hoy pagas
+                    únicamente el mes {request.periodIndex} de {request.months}.
                   </p>
                   <PriceBreakdown
-                    monthlyKwh={request.kwh}
+                    hashrateTh={request.hashrateTh}
                     months={request.months}
-                    priceCopPerKwh={request.priceCopPerKwh}
-                    saleCopPerKwh={request.saleCopPerKwh}
+                    priceCopPerThMonth={request.priceCopPerThMonth}
+                    satsPerThDay={request.satsPerThDay}
                   />
                   <p className="mt-5 flex items-start gap-3 text-sm leading-relaxed text-fog">
                     <ShieldCheck size={18} className="mt-0.5 shrink-0" />
                     Cada pago confirmado cubre {DAYS_PER_MONTH} días.{" "}
                     {request.periodIndex > 1
-                      ? "Si pagas por adelantado, el nuevo periodo comienza al terminar el anterior."
-                      : "El primer periodo comienza al confirmar el pago."}
+                      ? "Si pagas por adelantado, el mes nuevo empieza al terminar el anterior."
+                      : "Tu hashrate empieza a minar cuando se confirma el pago."}
                   </p>
                   <div className="mt-8 flex flex-wrap justify-between gap-4">
                     <button
@@ -272,7 +271,7 @@ function Purchase({
               )}
               {step === 4 && order && (
                 <>
-                  <div aria-hidden="true" className="mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-ink text-void">
+                  <div aria-hidden="true" className="mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-amber text-amber-ink">
                     <Check size={28} />
                   </div>
                   <ConfirmedPlanPayment
@@ -299,7 +298,7 @@ function Purchase({
                   </dl>
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Link href="/panel" className="btn btn-solid">
-                      Ver mi energía <ArrowUpRight size={16} />
+                      Ver mi minería <ArrowUpRight size={16} />
                     </Link>
                     <ReceiptButton id={order.id} />
                   </div>
@@ -307,20 +306,23 @@ function Purchase({
               )}
             </section>
             <aside
-              className="min-w-0 self-start border border-line-strong p-6 lg:sticky lg:top-8"
+              className="panel min-w-0 self-start p-6 lg:sticky lg:top-8"
               aria-label="Resumen del plan"
             >
-              <p className="cap">Tu plan de energía</p>
-              <h2 className="display mt-3 text-4xl">{request.planName}</h2>
+              <p className="cap">Tu plan</p>
+              <h2 className="display mt-2 text-3xl">
+                {request.planName} <span className="num text-xl text-amber-text">{formatTh(request.hashrateTh)}</span>
+              </h2>
               <dl className="mt-6 space-y-5 border-y border-line py-6">
                 {[
                   [
                     step === 4 ? "Mes pagado" : "Mes que pagas",
                     `${request.periodIndex} de ${request.months}`,
                   ],
-                  ["Energía del mes", `${formatNumber(request.kwh)} kWh`],
-                  ["Compra por kWh", formatCop(request.priceCopPerKwh)],
-                  ["Venta por kWh", formatCop(request.saleCopPerKwh)],
+                  ["Hashrate", formatTh(request.hashrateTh)],
+                  ["Precio por TH/s al mes", formatCop(request.priceCopPerThMonth)],
+                  ["Hashprice de hoy", formatHashprice(request.satsPerThDay)],
+                  ["Minería estimada del mes", formatSats(request.hashrateTh * request.satsPerThDay * DAYS_PER_MONTH)],
                 ].map(([label, value]) => (
                   <div
                     key={label}
@@ -336,11 +338,11 @@ function Purchase({
                 {formatCop(order?.amountCop ?? request.amountCop)}
               </p>
               <p className="mt-2 text-xs text-mute">
-                Pesos colombianos · pago mensual
+                Pesos colombianos, pago mensual
               </p>
               <p className="mt-6 text-sm leading-relaxed text-fog">
-                La utilidad corresponde a la diferencia entre compra y venta,
-                antes de costos e impuestos.
+                El hashprice del mes se fija cuando se confirma el pago. Los sats
+                se acumulan en tu saldo y los retiras a tu billetera Bitcoin.
               </p>
               <Link
                 href="/ayuda"

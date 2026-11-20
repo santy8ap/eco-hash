@@ -11,7 +11,7 @@ import { sendPlanReminders } from "./reminders";
 
 /**
  * Mantenimiento: cierra lo que quedó abierto y ya nadie va a completar, y borra lo vencido que no sirve.
- * Sin esto, un pago que se abandona en el checkout queda «sin pagar» para siempre: el comercializador ve el
+ * Sin esto, un pago que se abandona en el checkout queda «sin pagar» para siempre: el cliente ve el
  * aviso de un pago pendiente que no existe y su cuenta no se puede eliminar.
  *
  * Cerrar no pierde dinero: si el pago de una orden cancelada llega tarde, Mercado Pago avisa y la orden se

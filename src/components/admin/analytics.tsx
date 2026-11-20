@@ -6,7 +6,7 @@ import type { BusinessAnalytics, MonthStats, Renewal } from "@/lib/admin/analyti
 import { useJson } from "@/lib/client/use-json";
 import { downloadCsv } from "@/lib/csv";
 import { adminMethodLabel } from "@/lib/labels";
-import { formatCop, formatCopCompact, formatDate, formatNumber, formatPct } from "@/lib/format";
+import { formatCop, formatCopCompact, formatDate, formatHashrate, formatNumber, formatPct, formatSats, formatTh } from "@/lib/format";
 import { ErrorNote } from "@/components/ui/field";
 import { AdminTopbar } from "./shell";
 
@@ -64,7 +64,7 @@ function MonthlyChart({ months }: { months: MonthStats[] }) {
               )}
               <span
                 aria-hidden="true"
-                className={`block w-[min(24px,60%)] rounded-t-[4px] transition-opacity ${m.collectedCop > 0 ? "bg-ink" : ""} ${shown != null && shown !== i ? "opacity-40" : ""}`}
+                className={`block w-[min(24px,60%)] rounded-t-[4px] transition-opacity ${m.collectedCop > 0 ? "bg-amber" : ""} ${shown != null && shown !== i ? "opacity-40" : ""}`}
                 style={{ height: `${h}%` }}
               />
             </li>
@@ -94,7 +94,7 @@ function MonthlyChart({ months }: { months: MonthStats[] }) {
   );
 }
 
-/** Una fila de barra con su nombre y su cifra (medios de pago, embudo, cupo). */
+/** Una fila de barra con su nombre y su cifra (medios de pago, embudo, capacidad). */
 function MeterRow({ name, share, figure, note }: { name: string; share: number; figure: string; note?: string }) {
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2 border-b border-line py-4 sm:grid-cols-[13rem_minmax(0,1fr)_auto]">
@@ -104,7 +104,7 @@ function MeterRow({ name, share, figure, note }: { name: string; share: number; 
       </div>
       <p className="num text-right text-sm sm:order-last">{figure}</p>
       <div className="col-span-2 h-2 rounded-full bg-line/60 sm:col-span-1" aria-hidden="true">
-        <div className="h-2 rounded-full bg-ink" style={{ width: `${Math.max(0, Math.min(1, share)) * 100}%` }} />
+        <div className="h-2 rounded-full bg-amber" style={{ width: `${Math.max(0, Math.min(1, share)) * 100}%` }} />
       </div>
     </li>
   );
@@ -137,8 +137,8 @@ function RenewalList({ items, empty, kind, now = 0 }: { items: Renewal[]; empty:
 function exportMonths(months: MonthStats[]) {
   const last = months[months.length - 1]?.month ?? "";
   downloadCsv(`reporte-mensual-${last}.csv`, [
-    ["Mes", "Recaudo COP", "Pagos", "Energía vendida kWh", "Retiros pagados COP", "Clientes nuevos", "Planes nuevos"],
-    ...months.map((m) => [m.label, m.collectedCop, m.payments, Math.round(m.soldKwh), m.withdrawnCop, m.newClients, m.newPlans]),
+    ["Mes", "Recaudo COP", "Pagos", "Hashrate vendido TH/s·mes", "Retiros enviados sats", "Clientes nuevos", "Planes nuevos"],
+    ...months.map((m) => [m.label, m.collectedCop, m.payments, Math.round(m.soldTh), m.withdrawnSats, m.newClients, m.newPlans]),
   ]);
 }
 
@@ -158,7 +158,7 @@ export function AdminAnalytics() {
   const totalMethods = data.methods.reduce((s, m) => s + m.cop, 0);
   const f = data.funnel;
   const step = (n: number) => (f.registered ? n / f.registered : 0);
-  const used = data.capacity.plantDailyKwh ? data.capacity.contractedDailyKwh / data.capacity.plantDailyKwh : 0;
+  const used = data.capacity.capacityTh ? data.capacity.contractedTh / data.capacity.capacityTh : 0;
 
   return (
     <>
@@ -192,8 +192,8 @@ export function AdminAnalytics() {
                   <th className="py-2 pr-4 font-normal">Mes</th>
                   <th className="py-2 pr-4 text-right font-normal">Recaudo</th>
                   <th className="py-2 pr-4 text-right font-normal">Pagos</th>
-                  <th className="py-2 pr-4 text-right font-normal">Energía vendida</th>
-                  <th className="py-2 pr-4 text-right font-normal">Retiros pagados</th>
+                  <th className="py-2 pr-4 text-right font-normal">Hashrate vendido</th>
+                  <th className="py-2 pr-4 text-right font-normal">Retiros enviados</th>
                   <th className="py-2 pr-4 text-right font-normal">Clientes nuevos</th>
                   <th className="py-2 text-right font-normal">Planes nuevos</th>
                 </tr>
@@ -204,8 +204,8 @@ export function AdminAnalytics() {
                     <td className="py-2 pr-4">{m.label}</td>
                     <td className="py-2 pr-4 text-right">{formatCop(m.collectedCop)}</td>
                     <td className="py-2 pr-4 text-right">{m.payments}</td>
-                    <td className="py-2 pr-4 text-right">{formatNumber(m.soldKwh)} kWh</td>
-                    <td className="py-2 pr-4 text-right">{formatCop(m.withdrawnCop)}</td>
+                    <td className="py-2 pr-4 text-right">{formatTh(m.soldTh)}</td>
+                    <td className="py-2 pr-4 text-right">{formatSats(m.withdrawnSats)}</td>
                     <td className="py-2 pr-4 text-right">{m.newClients}</td>
                     <td className="py-2 text-right">{m.newPlans}</td>
                   </tr>
@@ -273,13 +273,13 @@ export function AdminAnalytics() {
         </p>
       </Section>
 
-      <Section id="cupo" title="Cupo de la planta" note="La energía diaria vendida en planes vigentes frente a lo que la planta entrega al día.">
+      <Section id="capacidad" title="Capacidad de la granja" note="El hashrate vendido en planes vigentes (incluidos los que están en pausa) frente a la capacidad de la granja.">
         <ul className="border-t border-line">
           <MeterRow
             name="Contratado"
             share={used}
-            figure={`${formatNumber(data.capacity.contractedDailyKwh)} de ${formatNumber(data.capacity.plantDailyKwh)} kWh · ${formatPct(used, 1)}`}
-            note={`Quedan ${formatNumber(Math.max(0, data.capacity.plantDailyKwh - data.capacity.contractedDailyKwh))} kWh al día para planes nuevos`}
+            figure={`${formatHashrate(data.capacity.contractedTh)} de ${formatHashrate(data.capacity.capacityTh)}, ${formatPct(used, 1)}`}
+            note={`Quedan ${formatHashrate(Math.max(0, data.capacity.capacityTh - data.capacity.contractedTh))} para planes nuevos`}
           />
         </ul>
       </Section>

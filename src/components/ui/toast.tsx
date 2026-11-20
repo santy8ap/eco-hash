@@ -45,7 +45,7 @@ export function Toaster() {
         <div
           key={t.id}
           role={t.tone === "error" ? "alert" : "status"}
-          className={`pointer-events-auto flex max-w-[520px] items-start gap-3 px-4 py-3 text-sm ${t.tone === "error" ? "sheet text-ink" : "bg-ink text-void"}`}
+          className={`pointer-events-auto flex max-w-[520px] items-start gap-3 px-4 py-3 text-sm ${t.tone === "error" ? "sheet text-ink" : "bg-amber text-amber-ink"}`}
         >
           {t.tone === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0" /> : <Check size={16} className="mt-0.5 shrink-0" />}
           <span>{t.message}</span>

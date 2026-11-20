@@ -15,7 +15,7 @@ interface TransferAccount {
   holderId: string;
 }
 
-/** La cuenta de la empresa que ven los comercializadores cuando eligen pagar por transferencia. */
+/** La cuenta de la empresa que ven los clientes cuando eligen pagar por transferencia. */
 export function TransferSettingsForm() {
   const { data, error } = useJson<{ account: TransferAccount | null }>(SETTINGS_URL);
   return (
@@ -24,7 +24,7 @@ export function TransferSettingsForm() {
         Cuenta para transferencias
       </h2>
       <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-mute">
-        Los comercializadores ven estos datos cuando eligen pagar por transferencia bancaria, junto con el valor exacto y una referencia. Cada transferencia la confirmas en Pagos cuando veas el dinero en el banco. Mientras no haya una cuenta guardada, esa opción no aparece.
+        Los clientes ven estos datos cuando eligen pagar por transferencia bancaria, junto con el valor exacto y una referencia. Cada transferencia la confirmas en Pagos cuando veas el dinero en el banco. Mientras no haya una cuenta guardada, esa opción no aparece.
       </p>
       {error && <ErrorNote className="mt-6">{error}</ErrorNote>}
       {data ? (
@@ -108,7 +108,7 @@ function AccountForm({ initial }: { initial: TransferAccount | null }) {
         {(id, aria) => <input id={id} {...aria} value={holder} onChange={(e) => setHolder(e.target.value)} maxLength={120} autoComplete="off" className="field" />}
       </Field>
       {isPhoneWallet(bank) && (
-        <p className="border-l-2 border-ink pl-4 text-sm leading-relaxed text-fog sm:col-span-2" role="note">
+        <p className="rounded-[10px] bg-seam px-4 py-3 text-sm leading-relaxed text-fog sm:col-span-2" role="note">
           {bank} tiene topes de lo que una cuenta puede recibir al mes, y las mensualidades de los planes son altas. Confirma con {bank} el tope de tu cuenta; para recibir
           pagos de empresas suele convenir una cuenta de ahorros o corriente a nombre de la empresa.
         </p>

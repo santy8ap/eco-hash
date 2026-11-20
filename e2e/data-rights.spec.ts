@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
-test("datos personales: el comercializador los descarga y pide eliminar su cuenta; el admin responde", async ({ page }) => {
+test("datos personales: el cliente los descarga y pide eliminar su cuenta; el admin responde", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
@@ -40,7 +40,7 @@ test("datos personales: el comercializador los descarga y pide eliminar su cuent
   await page.getByRole("button", { name: "Enviar la respuesta" }).click();
   await expect(page.getByText("Solicitud respondida.")).toBeVisible();
 
-  // 4. El comercializador ve la respuesta en su perfil.
+  // 4. El cliente ve la respuesta en su perfil.
   await page.goto("/panel/perfil");
   await expect(page.getByText(/Es la cuenta de pruebas: no se elimina\./)).toBeVisible();
   expect(errors).toEqual([]);

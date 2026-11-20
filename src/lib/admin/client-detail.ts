@@ -9,7 +9,7 @@ import { toTxDTO } from "@/lib/portfolio";
 import { listAudit, listClients } from "./service";
 
 /**
- * La ficha de un comercializador para el admin: lo mismo que la lista de Clientes (con los mismos cálculos de
+ * La ficha de un cliente para el admin: lo mismo que la lista de Clientes (con los mismos cálculos de
  * saldo, así cuadra con todo lo demás) más todos sus movimientos, los correos que se le enviaron, lo que el
  * equipo hizo en su cuenta, sus solicitudes sobre datos personales y su último ingreso.
  */

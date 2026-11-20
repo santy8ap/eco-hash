@@ -11,7 +11,7 @@ import { TransferSettingsForm } from "./transfer-settings";
 export function AdminSettings() {
   return (
     <>
-      <AdminTopbar title="Configuración" subtitle="Lo que necesita la página para cobrar dinero real y los datos que ven los comercializadores." />
+      <AdminTopbar title="Configuración" subtitle="Lo que necesita la página para cobrar dinero real y los datos que ven los clientes." />
       <ConfigChecklist className="" />
       <TransferSettingsForm />
       <SupportSettingsForm />

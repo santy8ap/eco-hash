@@ -39,7 +39,7 @@ export function Field({
 /** Mensaje de error de un formulario o de una acción. */
 export function ErrorNote({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <p role="alert" className={`border-l-2 border-ink pl-4 text-sm leading-relaxed text-ink ${className}`}>
+    <p role="alert" className={`rounded-[10px] bg-seam px-4 py-3 text-sm leading-relaxed text-ink ${className}`}>
       {children}
     </p>
   );
@@ -50,7 +50,7 @@ export function Checkbox({ checked, onChange, children, invalid, describedBy }: 
   return (
     <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-fog">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" aria-invalid={invalid} aria-describedby={describedBy} />
-      <span aria-hidden="true" className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center border border-line-strong text-void transition-colors peer-checked:border-ink peer-checked:bg-ink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink">
+      <span aria-hidden="true" className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center border border-line-strong text-amber-ink transition-colors peer-checked:border-amber peer-checked:bg-amber peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-amber">
         {checked && (
           <svg width="11" height="9" viewBox="0 0 11 9" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M1 4.5l3 3 6-6.5" />

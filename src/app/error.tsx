@@ -9,8 +9,8 @@ export default function ErrorPage({ error, retry }: { error: unknown; retry: () 
   }, [error]);
   const digest = error instanceof Error ? (error as Error & { digest?: string }).digest : undefined;
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[1240px] flex-col justify-center px-5 py-16 sm:px-8">
-      <h1 className="display text-[clamp(2.75rem,7vw,5rem)]">Algo salió mal</h1>
+    <main className="mx-auto flex min-h-dvh w-full max-w-[1200px] flex-col justify-center px-5 py-16 sm:px-8">
+      <h1 className="display text-[clamp(2.2rem,5vw,3.4rem)]">Algo salió mal</h1>
       <p className="mt-5 max-w-[48ch] leading-relaxed text-fog">No pudimos mostrar esta página. Tus planes, tu energía y tu saldo no cambian por este error.</p>
       <div className="mt-9 flex flex-wrap gap-3">
         <button type="button" className="btn btn-solid" onClick={() => retry()}>

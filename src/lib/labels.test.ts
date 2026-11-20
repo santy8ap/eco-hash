@@ -12,7 +12,7 @@ describe("los mismos nombres en la pantalla, los PDF y los CSV", () => {
     expect(txStatusLabel("desconocido")).toBe("desconocido");
   });
 
-  it("medios de pago: para el comercializador y para el admin", () => {
+  it("medios de pago: para el cliente y para el admin", () => {
     expect(paymentMethodLabel("mercadopago")).toBe("Mercado Pago");
     expect(paymentMethodLabel("manual")).toBe("Transferencia bancaria");
     expect(adminMethodLabel("manual")).toBe("Registrado a mano");

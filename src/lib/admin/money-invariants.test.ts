@@ -176,7 +176,7 @@ describe("lo que se les debe a los clientes", () => {
     expect((await analytics.businessAnalytics(NOW)).totals.withdrawnSats).toBe(100_000);
   });
 
-  it("cada comercializador ve en su panel el mismo saldo que ve el admin", async () => {
+  it("cada cliente ve en su panel el mismo saldo que ve el admin", async () => {
     const clients = await admin.listClients();
     for (const c of clients) {
       const mine = await portfolio.getPortfolio(c.id);

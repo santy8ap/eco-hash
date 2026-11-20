@@ -3,7 +3,7 @@ import { TERMS_VERSION, getProfile, saveProfile } from "@/lib/profile";
 import { TOO_MANY_PROFILE_CHANGES, profileLimiter } from "@/lib/security/limits";
 import { getSessionUser, jsonError, unauthorized } from "@/lib/session";
 
-/** Datos personales del comercializador de la sesión actual. */
+/** Datos personales del cliente de la sesión actual. */
 export async function GET() {
   try {
     const user = await getSessionUser();

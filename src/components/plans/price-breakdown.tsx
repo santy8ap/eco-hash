@@ -1,58 +1,62 @@
-import { planEconomics } from "@/lib/energy/plan-math";
-import { formatCop, formatNumber } from "@/lib/format";
+"use client";
+import { useNetwork } from "@/lib/client/use-network";
+import { formatBtc, formatCop, formatHashprice, formatPct, formatSats, formatTh } from "@/lib/format";
+import { DAYS_PER_MONTH, estimateReturn, planEconomics } from "@/lib/mining/plan-math";
 
 export interface PriceBreakdownProps {
-  monthlyKwh: number;
+  hashrateTh: number;
   months: number;
-  priceCopPerKwh: number;
-  saleCopPerKwh: number;
+  priceCopPerThMonth: number;
+  /** Hashprice de hoy: con él se estima el mes; el definitivo se fija al confirmarse el pago */
+  satsPerThDay: number;
 }
 
-/** La misma comparación de compra y venta para el catálogo y el mes que se va a pagar. */
-export function PriceBreakdown({ monthlyKwh, months, priceCopPerKwh, saleCopPerKwh }: PriceBreakdownProps) {
-  const economics = planEconomics({ totalKwh: monthlyKwh * months, priceCopPerKwh }, saleCopPerKwh, months);
+/** Lo que se paga y lo que se estima minar en el mes, con su valor al precio del BTC de hoy. */
+export function PriceBreakdown({ hashrateTh, months, priceCopPerThMonth, satsPerThDay }: PriceBreakdownProps) {
+  const econ = planEconomics({ hashrateTh, priceCopPerThMonth }, satsPerThDay, months);
+  const { data } = useNetwork();
+  const est = data ? estimateReturn(econ, data.btc.cop) : null;
   return (
-    <section aria-label="Compra, venta y utilidad del plan" className="mt-7">
-      <dl className="grid gap-4 sm:grid-cols-2">
-        {[
-          { label: "Valor de compra", price: priceCopPerKwh, total: economics.monthlyCop },
-          { label: "Valor de venta", price: saleCopPerKwh, total: economics.monthlySaleCop },
-        ].map(({ label, price, total }) => (
-          <div key={label} className="min-w-0 border border-line-strong p-5">
-            <dt className="cap">{label}</dt>
-            <dd className="num mt-4 text-[1.8rem] leading-tight">
-              {formatCop(price)} <span className="text-xs text-mute">COP / kWh</span>
-            </dd>
-            <dd className="mt-5 border-t border-line pt-4">
-              <span className="cap block">{formatNumber(monthlyKwh)} <span className="unit">kWh</span> al mes</span>
-              <span className="num mt-2 block text-xl">{formatCop(total)} <span className="text-xs text-mute">COP / mes</span></span>
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <div className="mt-4 border border-line-strong p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 className="cap">Utilidad bruta por <span className="unit">kWh</span></h3>
-            <p className="num mt-3 text-[1.8rem] leading-tight">{formatCop(economics.profitPerKwhCop)} <span className="text-xs text-mute">COP / kWh</span></p>
-          </div>
-          <p className="num text-sm text-fog">{formatNumber(economics.profitPct * 100, 2)} % sobre la compra</p>
+    <section aria-label="Mensualidad y minería estimada" className="mt-7">
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <div className="panel min-w-0 p-5">
+          <dt className="cap">Mensualidad</dt>
+          <dd className="num mt-3 text-[1.7rem] leading-tight">{formatCop(econ.monthlyCop)}</dd>
+          <dd className="num mt-2 text-sm text-mute">
+            {formatTh(hashrateTh)} × {formatCop(priceCopPerThMonth)} por TH/s
+          </dd>
+          <dd className="mt-4 border-t border-line pt-3 text-sm text-fog">
+            {months} meses: <span className="num text-ink">{formatCop(econ.totalCop)}</span> en total, pagados mes a mes.
+          </dd>
         </div>
-        <p className="num mt-3 text-xs text-mute">{formatCop(saleCopPerKwh)} − {formatCop(priceCopPerKwh)} = {formatCop(economics.profitPerKwhCop)} por kWh</p>
-        <dl className="mt-5 grid gap-5 border-t border-line pt-5 sm:grid-cols-3">
-          {[
-            ["Utilidad diaria", economics.dailyProfitCop],
-            ["Utilidad mensual", economics.monthlyProfitCop],
-            [`Utilidad en ${months} meses`, economics.totalProfitCop],
-          ].map(([label, amount]) => (
-            <div key={String(label)} className="min-w-0">
-              <dt className="cap">{label}</dt>
-              <dd className="num mt-2 break-words text-lg">{formatCop(Number(amount))}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <p className="mt-4 text-xs leading-relaxed text-mute">Valores en COP. Utilidad bruta de referencia, antes de costos e impuestos, calculada con la energía del plan y sus precios de compra y venta.</p>
+        <div className="panel min-w-0 p-5">
+          <dt className="cap">Minería estimada del mes</dt>
+          <dd className="num mt-3 text-[1.7rem] leading-tight">{formatSats(econ.monthlySats)}</dd>
+          <dd className="num mt-2 text-sm text-mute">{formatBtc(econ.monthlySats)}</dd>
+          <dd className="mt-4 border-t border-line pt-3 text-sm text-fog">
+            {formatTh(hashrateTh)} × {formatHashprice(satsPerThDay)} × {DAYS_PER_MONTH} días.
+          </dd>
+        </div>
+      </dl>
+      {est && data && (
+        <div className="panel mt-3 flex flex-wrap items-end justify-between gap-3 p-5">
+          <div>
+            <p className="cap">Al precio del BTC de hoy ({formatCop(data.btc.cop)})</p>
+            <p className="num mt-2 text-xl">
+              {formatCop(est.monthlyValueCop)} al mes{" "}
+              <span className={est.profitPct >= 0 ? "text-jade-text" : "text-coral"}>
+                ({est.profitPct >= 0 ? "+" : "−"}
+                {formatPct(Math.abs(est.profitPct), 1)} sobre la mensualidad)
+              </span>
+            </p>
+          </div>
+          <p className="num text-sm text-mute">El mes se paga solo con el BTC por encima de {formatCop(est.breakEvenBtcCop)}</p>
+        </div>
+      )}
+      <p className="mt-4 text-xs leading-relaxed text-mute">
+        Estimación con el hashprice de hoy. El hashprice del mes se fija cuando se confirma tu pago, y el valor en pesos depende del precio del BTC: la
+        rentabilidad no está garantizada. La mensualidad incluye la energía y el mantenimiento.
+      </p>
     </section>
   );
 }

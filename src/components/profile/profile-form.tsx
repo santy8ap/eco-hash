@@ -19,7 +19,7 @@ export function useProfile() {
 
 const DOC_PLACEHOLDER: Record<DocTypeId, string> = { CC: "1036123456", CE: "E123456", PP: "AB123456" };
 
-/** Datos personales del comercializador y aceptación de términos. */
+/** Datos personales del titular y aceptación de términos. */
 export function ProfileForm({ onSaved, submitLabel = "Guardar los datos" }: { onSaved?(p: ProfileDTO): void; submitLabel?: string }) {
   const { data, error } = useProfile();
   if (!data) {
@@ -80,10 +80,10 @@ function ProfileFields({ initial, onSaved, submitLabel }: { initial: ProfileResp
 
   return (
     <form onSubmit={submit} noValidate className="space-y-8">
-      {mustReview && <p className="border-l-2 border-ink pl-4 text-sm leading-relaxed text-fog">Revisa tus datos personales y acepta los Términos y la Política de Datos vigentes para continuar.</p>}
+      {mustReview && <p className="rounded-[10px] bg-seam px-4 py-3 text-sm leading-relaxed text-fog">Revisa tus datos personales y acepta los Términos y la Política de Datos vigentes para continuar.</p>}
 
       <fieldset className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-        <legend className="mb-6 text-lg font-medium sm:col-span-2">Datos personales del comercializador</legend>
+        <legend className="mb-6 text-lg font-medium sm:col-span-2">Datos personales del titular</legend>
         <Field label="Nombre completo" error={errors.fullName} className="sm:col-span-2">
           {(id, aria) => <input id={id} {...aria} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} autoComplete="name" placeholder="Como aparece en tu documento" className="field" />}
         </Field>

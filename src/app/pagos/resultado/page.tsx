@@ -40,7 +40,7 @@ export default function ResultadoPage({
     <>
       {" "}
       <main className="flex min-h-dvh flex-col">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1240px] items-center justify-between px-5 sm:px-8">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1200px] items-center justify-between px-4 sm:px-8">
           <Link href="/" aria-label={`${BRAND.name}, inicio`}>
             <Logo />
           </Link>

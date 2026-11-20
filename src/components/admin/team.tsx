@@ -190,7 +190,7 @@ function RemoveDialog({ member, onClose }: { member: Member | null; onClose(): v
   return (
     <Modal open onClose={busy ? () => {} : onClose} title="Quitar el acceso">
       <p className="leading-relaxed text-fog">
-        <strong className="font-medium text-ink">{member.name ?? member.email}</strong> dejará de poder entrar a la administración de inmediato, aunque tenga la sesión abierta. Su cuenta de comercializador,
+        <strong className="font-medium text-ink">{member.name ?? member.email}</strong> dejará de poder entrar a la administración de inmediato, aunque tenga la sesión abierta. Su cuenta de cliente,
         si tiene una, no cambia.
       </p>
       {error && <ErrorNote className="mt-5">{error}</ErrorNote>}

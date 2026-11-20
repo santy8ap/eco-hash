@@ -9,7 +9,7 @@ export function SupportSettingsForm() {
   const { data, error } = useJson<SupportSettings>("/api/support");
   return (
     <section className="mt-16 border-t border-line-strong pt-8">
-      <h2 className="text-xl font-medium">Atención al comercializador</h2>
+      <h2 className="text-xl font-medium">Atención al cliente</h2>
       <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-mute">
         Publica aquí el correo y el número de WhatsApp oficiales. Aparecerán en
         el centro de ayuda y en la asistencia de la compra.

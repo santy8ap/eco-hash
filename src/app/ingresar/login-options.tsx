@@ -20,8 +20,8 @@ type Role = "user" | "admin";
 const ROLES: { id: Role; title: string; note: string }[] = [
   {
     id: "user",
-    title: "Comercializador",
-    note: "Tus planes, tu energía y tus retiros",
+    title: "Cliente",
+    note: "Tus planes, tus sats y tus retiros",
   },
   { id: "admin", title: "Administrador", note: "Solo cuentas de Google autorizadas" },
 ];
@@ -91,13 +91,13 @@ export function LoginOptions({
     <div className="space-y-7">
       <fieldset>
         <legend className="cap mb-3">Entrar como</legend>
-        <div className="grid grid-cols-2 border border-line-strong">
+        <div className="grid grid-cols-2 gap-1 rounded-[12px] border border-line p-1">
           {ROLES.map(({ id, title, note }) => {
             const active = role === id;
             return (
               <label
                 key={id}
-                className={`flex cursor-pointer flex-col gap-1 p-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${id === "admin" ? "border-l border-line-strong" : ""} ${active ? "bg-ink text-void" : "hover:bg-ink/5"}`}
+                className={`flex cursor-pointer flex-col gap-1 rounded-[9px] p-3.5 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-amber ${active ? "bg-amber-soft text-ink ring-1 ring-amber/50" : "hover:bg-seam"}`}
               >
                 <input
                   type="radio"
@@ -109,7 +109,7 @@ export function LoginOptions({
                 />
                 <span className="break-words font-medium">{title}</span>
                 <span
-                  className={`text-xs leading-snug ${active ? "text-void/80" : "text-mute"}`}
+                  className={`text-xs leading-snug ${active ? "text-fog" : "text-mute"}`}
                 >
                   {note}
                 </span>
@@ -162,7 +162,7 @@ export function LoginOptions({
       {error && (
         <p
           role="alert"
-          className="border-l-2 border-ink pl-4 text-sm leading-relaxed text-fog"
+          className="rounded-[10px] border border-coral/40 bg-coral/10 px-4 py-3 text-sm leading-relaxed text-ink"
         >
           {error}
         </p>

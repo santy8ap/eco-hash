@@ -42,8 +42,8 @@ describe("continuidad segura de la compra", () => {
 
 describe("exportación y fechas", () => {
   it("escapa comillas y evita fórmulas de hojas de cálculo sin alterar importes numéricos", () => {
-    expect(csvCell('Nombre "Comercializador"')).toBe(
-      '"Nombre ""Comercializador"""',
+    expect(csvCell('Nombre "Cliente"')).toBe(
+      '"Nombre ""Cliente"""',
     );
     expect(csvCell('=HYPERLINK("https://evil.invalid")')).toMatch(/^"'=/);
     expect(csvCell("  +SUM(1;2)")).toMatch(/^"'/);

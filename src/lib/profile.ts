@@ -13,7 +13,7 @@ export const TERMS_VERSION = LEGAL.version;
 export interface ProfileDTO {
   companyName: string;
   nit: string;
-  /** Titular del plan: el comercializador. */
+  /** Titular del plan: el cliente. */
   fullName: string;
   docType: DocTypeId;
   docNumber: string;
@@ -64,7 +64,7 @@ async function recordIdentityChange(userId: string, before: Identity, after: Ide
   await audit({ id: userId, name: after.fullName }, "cambio_titular", summary, { antes: identityOf(before), despues: identityOf(after) }, userId);
   alertAdmin(async () => ({
     kind: "datos",
-    subject: "Un comercializador cambió su nombre o su documento",
+    subject: "Un cliente cambió su nombre o su documento",
     lines: [
       `${before.fullName} cambió los datos del titular de su cuenta: ahora figura ${after.fullName}.`,
       "Los retiros se pagan a una cuenta a nombre del titular. Si no esperabas este cambio, revisa la cuenta en Clientes antes de pagarle un retiro. El antes y el después quedaron en Actividad.",
@@ -98,7 +98,7 @@ export async function requireCompleteProfile(userId: string): Promise<ProfileDTO
   const p = await getProfile(userId);
   if (!p?.complete) {
     throw new MarketError(
-      p && p.termsVersion !== TERMS_VERSION ? "Los términos se actualizaron: revísalos y acéptalos para continuar." : "Completa tus datos personales como comercializador para continuar.",
+      p && p.termsVersion !== TERMS_VERSION ? "Los términos se actualizaron: revísalos y acéptalos para continuar." : "Completa tus datos personales como cliente para continuar.",
       412,
       { code: "perfil_incompleto" },
     );

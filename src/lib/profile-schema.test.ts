@@ -17,7 +17,7 @@ function errors(input: Record<string, unknown>) {
   return r.ok ? {} : r.errors;
 }
 
-describe("datos personales del comercializador", () => {
+describe("datos personales del cliente", () => {
   it("normaliza lo que la gente escribe", () => {
     const r = parseProfile({ ...base, companyName: "  Energía   Andina S.A.S. ", nit: "900.123.456-8", fullName: "  Laura   Gómez  ", docNumber: "1.036.123.456", phone: "+57 300-123-4567", city: " Medellín " });
     expect(r).toEqual({
@@ -26,7 +26,7 @@ describe("datos personales del comercializador", () => {
     });
   });
 
-  it("no exige razón social ni NIT para un comercializador", () => {
+  it("no exige razón social ni NIT para un cliente", () => {
     const { fullName, docType, docNumber, phone, city, acceptTerms } = base;
     expect(parseProfile({ fullName, docType, docNumber, phone, city, acceptTerms })).toEqual({
       ok: true, value: { fullName, docType, docNumber, phone, city },

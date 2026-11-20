@@ -8,12 +8,7 @@ import { useAppConfig } from "@/lib/client/use-app-config";
 import { postJson, refetch, useJson } from "@/lib/client/use-json";
 import { adminMethodLabel } from "@/lib/labels";
 import { transferReference } from "@/lib/transfer-reference";
-import {
-  formatAsset,
-  formatCop,
-  formatDateTime,
-  formatNumber,
-} from "@/lib/format";
+import { formatAsset, formatCop, formatDateTime, formatNumber, formatTh } from "@/lib/format";
 import { explorerTxUrl, paymentMethodLabel } from "@/components/panel/tx-meta";
 import { ErrorNote, Field } from "@/components/ui/field";
 import { Status, TX_STATUS } from "@/components/ui/status";
@@ -86,7 +81,7 @@ function PaymentActions({
       setBusy(false);
     }
   };
-  // Mercado Pago se consulta por la referencia de la orden: sirve aunque el comercializador no haya vuelto del pago.
+  // Mercado Pago se consulta por la referencia de la orden: sirve aunque el cliente no haya vuelto del pago.
   const canReverify =
     (p.method === "mercadopago" &&
       [
@@ -98,11 +93,11 @@ function PaymentActions({
         "reembolsada",
       ].includes(p.status)) ||
     (p.method === "crypto" && p.status === "verificando");
-  // También a una cotización que se canceló por vencida: si el comercializador sí pagó, el hash lo demuestra.
+  // También a una cotización que se canceló por vencida: si el cliente sí pagó, el hash lo demuestra.
   const canAttach =
     p.method === "crypto" && (p.status === "pendiente" || p.status === "cancelada") && !p.providerId;
   const canRefund = p.status === "por_reembolsar";
-  // Transferencia que reportó el comercializador: el admin la busca en el banco y la confirma o la rechaza.
+  // Transferencia que reportó el cliente: el admin la busca en el banco y la confirma o la rechaza.
   const canReviewTransfer =
     p.method === "transferencia" &&
     (p.status === "pendiente" || p.status === "verificando");
@@ -217,12 +212,12 @@ function PaymentActions({
           {p.subscriptionId && p.periodIndex
             ? transferReference(p.subscriptionId, p.periodIndex)
             : "del plan"}
-          . Al guardar se activa el mes y la energía empieza a contar.
+          . Al guardar se activa el mes y el hashrate empieza a minar.
         </p>
       )}
       {mode === "rechazar_transferencia" && (
         <p className="mt-3 max-w-[68ch] text-sm text-fog">
-          El comercializador verá el motivo en sus movimientos y podrá pagar el
+          El cliente verá el motivo en sus movimientos y podrá pagar el
           mes otra vez.
         </p>
       )}
@@ -271,7 +266,7 @@ function PaymentActions({
                   : mode === "confirmar_transferencia"
                     ? "Referencia del movimiento en el banco"
                     : mode === "rechazar_transferencia"
-                      ? "Motivo (lo ve el comercializador)"
+                      ? "Motivo (lo ve el cliente)"
                       : "Referencia del reembolso"
             }
             className="min-w-[220px] flex-1"
@@ -308,9 +303,9 @@ function PaymentActions({
 function PaymentRow({ p, listUrl }: { p: AdminPaymentRow; listUrl: string }) {
   const st = TX_STATUS[p.status] ?? TX_STATUS.pendiente;
   const what = [
-    p.planName,
+    p.planName ? `plan ${p.planName}` : null,
     p.periodIndex ? `mes ${p.periodIndex}` : null,
-    p.kwh ? `${formatNumber(p.kwh)} kWh` : null,
+    p.hashrateTh ? formatTh(p.hashrateTh) : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -321,7 +316,7 @@ function PaymentRow({ p, listUrl }: { p: AdminPaymentRow; listUrl: string }) {
           p.subscriptionId && p.periodIndex
             ? `Referencia en el banco: ${transferReference(p.subscriptionId, p.periodIndex)}`
             : null,
-          p.txHash ? `comprobante del comercializador: ${p.txHash}` : null,
+          p.txHash ? `comprobante del cliente: ${p.txHash}` : null,
         ]
           .filter(Boolean)
           .join(", ") || null
@@ -411,7 +406,7 @@ export function AdminPayments() {
     <>
       <AdminTopbar
         title="Pagos"
-        subtitle="Las mensualidades que pagan los comercializadores: su estado, su verificación y los reembolsos."
+        subtitle="Las mensualidades que pagan los clientes: su estado, su verificación y los reembolsos."
       />
 
       <dl className="grid border-t border-line-strong sm:grid-cols-2 lg:grid-cols-4">
@@ -431,7 +426,7 @@ export function AdminPayments() {
           <div key={t.label} className="border-b border-line py-5 pr-6">
             <dt className="cap">{t.label}</dt>
             <dd
-              className={`num mt-2 text-[1.5rem] leading-tight ${t.alert ? "inline-block bg-ink px-2 text-void" : ""}`}
+              className={`num mt-2 text-[1.5rem] leading-tight ${t.alert ? "inline-block bg-amber px-2 text-amber-ink" : ""}`}
             >
               {t.value}
             </dd>
@@ -471,7 +466,7 @@ export function AdminPayments() {
                   type="button"
                   aria-pressed={filter === f.id}
                   onClick={() => setFilter(f.id)}
-                  className={`border-b pb-1 text-sm transition-colors ${filter === f.id ? "border-ink text-ink" : "border-transparent text-mute hover:text-ink"}`}
+                  className={`border-b pb-1 text-sm transition-colors ${filter === f.id ? "border-amber text-ink" : "border-transparent text-mute hover:text-ink"}`}
                 >
                   {f.label}
                 </button>
@@ -559,7 +554,7 @@ export function AdminPayments() {
         )}
         {!loading && !error && payments.length === 0 && (
           <p className="py-10 text-mute">
-            {search || client ? "Ningún pago coincide con esa búsqueda." : "No hay pagos en esta lista. Aparecen aquí apenas un comercializador empieza a pagar."}
+            {search || client ? "Ningún pago coincide con esa búsqueda." : "No hay pagos en esta lista. Aparecen aquí apenas un cliente empieza a pagar."}
           </p>
         )}
         {loading && !data && (

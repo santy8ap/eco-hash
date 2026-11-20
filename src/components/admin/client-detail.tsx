@@ -3,7 +3,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { postJson, refetch, useJson } from "@/lib/client/use-json";
-import { formatCop, formatDate, formatDateTime, formatNumber, shortAddress } from "@/lib/format";
+import { formatCop, formatDate, formatDateTime, formatHashprice, formatSats, formatTh, shortAddress } from "@/lib/format";
 import { adminMethodLabel } from "@/lib/labels";
 import type { SubscriptionDTO, TxDTO } from "@/lib/portfolio";
 import { explorerTxUrl } from "@/components/panel/tx-meta";
@@ -33,7 +33,7 @@ const EMAIL_STATUS: Record<string, { label: string; tone: "ok" | "wait" | "off" 
 };
 const REQUEST_STATUS: Record<string, string> = { pendiente: "Pendiente", atendida: "Cuenta eliminada", respondida: "Respondida sin eliminar" };
 
-/** La ficha de un comercializador: todo lo que el equipo necesita para atenderlo, en una sola página. */
+/** La ficha de un cliente: todo lo que el equipo necesita para atenderlo, en una sola página. */
 export function AdminClientDetail({ id }: { id: string }) {
   const url = `/api/admin/clients/${encodeURIComponent(id)}`;
   const { data, error } = useJson<Detail>(url, { refreshMs: 30_000 });
@@ -68,29 +68,29 @@ export function AdminClientDetail({ id }: { id: string }) {
     <>
       <AdminTopbar
         title={nameOf(c)}
-        subtitle={`${c.email} · Cliente desde el ${formatDate(c.createdAt)} · ${data.lastLoginAt ? `Último ingreso: ${formatDateTime(data.lastLoginAt)}` : "Nunca ha entrado"}`}
+        subtitle={`${c.email}. Cliente desde el ${formatDate(c.createdAt)}. ${data.lastLoginAt ? `Último ingreso: ${formatDateTime(data.lastLoginAt)}.` : "Nunca ha entrado."}`}
         action={back}
       />
 
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {!c.profile?.termsCurrent && <Status tone="wait">{c.profile ? "Falta completar los datos o aceptar los términos" : "No ha registrado sus datos personales"}</Status>}
         {c.openTransfers > 0 && <Status tone="act">{c.openTransfers === 1 ? "Transferencia por confirmar" : `${c.openTransfers} transferencias por confirmar`}</Status>}
-        {c.reservedCop > 0 && <Status tone="act">{`Retiro por pagar: ${formatCop(c.reservedCop)}`}</Status>}
+        {c.reservedSats > 0 && <Status tone="act">{`Retiro por enviar: ${formatSats(c.reservedSats)}`}</Status>}
         {c.plans.some((p) => p.state === "en_revision") && <Status tone="act">Devolución por conciliar</Status>}
         {c.deletionRequest && <Status tone="act">Pidió eliminar su cuenta</Status>}
       </div>
 
-      <dl className="mt-8 grid border-t border-line-strong sm:grid-cols-3 lg:grid-cols-5">
+      <dl className="panel mt-6 grid grid-cols-2 gap-px overflow-hidden bg-line sm:grid-cols-3 lg:grid-cols-5">
         {[
-          ["Energía generada", `${formatNumber(c.generatedKwh)} kWh`],
-          ["Venta de su energía", formatCop(c.soldCop)],
-          ["Saldo disponible", formatCop(c.balanceCop)],
-          ["Retiros por pagar", formatCop(c.reservedCop)],
-          ["Retirado", formatCop(c.withdrawnCop)],
+          ["Hashrate activo", formatTh(c.activeTh)],
+          ["Minado", formatSats(c.minedSats)],
+          ["Saldo disponible", formatSats(c.balanceSats)],
+          ["Retiros por enviar", formatSats(c.reservedSats)],
+          ["Retirado", formatSats(c.withdrawnSats)],
         ].map(([label, value]) => (
-          <div key={label} className="border-b border-line py-5 pr-4">
+          <div key={label} className="min-w-0 bg-raise px-5 py-4">
             <dt className="cap">{label}</dt>
-            <dd className="num mt-2 text-xl">{value}</dd>
+            <dd className="num mt-1.5 truncate text-lg">{value}</dd>
           </div>
         ))}
       </dl>
@@ -105,7 +105,7 @@ export function AdminClientDetail({ id }: { id: string }) {
                   return (
                     <li key={p.id} className="border-b border-line py-5">
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <span className="font-medium">{p.planName}</span>
+                        <span className="font-medium">Plan {p.planName}</span>
                         <Status tone={st.tone}>{st.label}</Status>
                         <span className="num text-sm text-mute">
                           Mes {Math.min(p.paidMonths, p.months)} de {p.months}
@@ -113,10 +113,10 @@ export function AdminClientDetail({ id }: { id: string }) {
                         <span className="num ml-auto text-xs text-dim">{p.id}</span>
                       </div>
                       <p className="num mt-2 text-sm text-mute">
-                        {formatNumber(p.dailyKwh)} kWh al día · compra {formatCop(p.priceCopPerKwh)} / kWh · venta {formatCop(p.saleCopPerKwh)} / kWh · {formatNumber(p.generatedKwh)} kWh generados
+                        {formatTh(p.hashrateTh)}, {formatCop(p.priceCopPerThMonth)} por TH/s al mes, {formatSats(p.minedSats)} minados
                       </p>
                       <p className="mt-1 text-sm text-mute">
-                        {p.periods.map((x) => `Mes ${x.index}: ${formatDate(x.startsAt)} al ${formatDate(x.endsAt)}`).join(" · ") || "Sin meses pagados"}
+                        {p.periods.map((x) => `Mes ${x.index}: ${formatDate(x.startsAt)} al ${formatDate(x.endsAt)}, ${formatHashprice(x.satsPerThDay)}`).join(". ") || "Sin meses pagados"}
                         {p.state === "en_pausa" && p.graceEndsAt ? `. Puede pagar hasta el ${formatDate(p.graceEndsAt)}.` : ""}
                       </p>
                       {(p.state === "activa" || p.state === "en_pausa" || p.state === "en_revision") && (
@@ -164,7 +164,7 @@ export function AdminClientDetail({ id }: { id: string }) {
           <section className="border border-line-strong p-6" aria-label="Acciones">
             <h2 className="cap">Acciones</h2>
             <div className="mt-4 flex flex-col items-start gap-3">
-              <button type="button" className="btn btn-solid w-full" disabled={!c.profile?.termsCurrent} onClick={() => setPaying(true)} title={c.profile?.termsCurrent ? undefined : "El comercializador debe completar sus datos personales primero"}>
+              <button type="button" className="btn btn-solid w-full" disabled={!c.profile?.termsCurrent} onClick={() => setPaying(true)} title={c.profile?.termsCurrent ? undefined : "El cliente debe completar sus datos personales primero"}>
                 Registrar un pago
               </button>
               {c.deletionRequest && (
@@ -313,7 +313,7 @@ function Movements({ rows, empty }: { rows: Detail["movements"]; empty: string }
     <ul>
       {rows.map((m) => {
         const st = TX_STATUS[m.status] ?? TX_STATUS.pendiente;
-        const explorer = m.method === "crypto" ? explorerTxUrl(m) : null;
+        const explorer = m.method === "crypto" || m.kind === "retiro" ? explorerTxUrl(m) : null;
         const reference = m.providerId ?? m.txHash;
         return (
           <li key={m.id} className="grid gap-2 border-b border-line py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
@@ -321,12 +321,12 @@ function Movements({ rows, empty }: { rows: Detail["movements"]; empty: string }
               <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="num">{m.id}</span>
                 <Status tone={st.tone}>{st.label}</Status>
-                <span className="text-mute">{m.kind === "retiro" ? (m.bankName ? `A ${m.bankName} ••${m.bankAccountLast4 ?? ""}` : `A la wallet ${shortAddress(m.walletAddress)}`) : `${adminMethodLabel(m.method)}${m.periodIndex ? ` · mes ${m.periodIndex}` : ""}`}</span>
+                <span className="text-mute">{m.kind === "retiro" ? `${formatSats(m.amountSats ?? 0)} a ${shortAddress(m.walletAddress)}` : `${adminMethodLabel(m.method)}${m.periodIndex ? `, mes ${m.periodIndex}` : ""}`}</span>
               </p>
               <p className="num mt-1 text-xs text-mute">
                 {formatDateTime(m.createdAt)}
-                {m.confirmedAt && m.status === "confirmada" ? ` · confirmado ${formatDateTime(m.confirmedAt)}` : ""}
-                {reference ? ` · ref. ${reference}` : ""}
+                {m.confirmedAt && m.status === "confirmada" ? `, confirmado ${formatDateTime(m.confirmedAt)}` : ""}
+                {reference ? `, ref. ${reference}` : ""}
               </p>
               {m.note && <p className="mt-1 text-xs text-fog">{m.note}</p>}
               {explorer && (
@@ -366,7 +366,7 @@ function CloseSessions({ clientId, sessions, url }: { clientId: string; sessions
   return (
     <div className="mt-4">
       {asking ? (
-        <div className="border-l-2 border-ink pl-4 text-sm">
+        <div className="rounded-[10px] bg-seam px-4 py-3 text-sm">
           <p className="leading-relaxed text-fog">Tendrá que volver a ingresar con Google en todos sus dispositivos. Úsalo si perdió el celular o cree que alguien entró a su cuenta.</p>
           <div className="mt-3 flex flex-wrap gap-3">
             <button type="button" className="btn btn-solid" disabled={busy} onClick={() => void close()}>

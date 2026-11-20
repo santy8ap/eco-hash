@@ -23,7 +23,7 @@ import { bankReferenceOwner } from "./bank-reference";
 import { assertExpectedPayment, type ExpectedPayment } from "./plan-target";
 
 /**
- * Pago por transferencia bancaria. El comercializador ve la cuenta configurada por el admin, el valor exacto y una
+ * Pago por transferencia bancaria. El cliente ve la cuenta configurada por el admin, el valor exacto y una
  * referencia (el código del plan y el mes); transfiere y reporta el comprobante. El admin busca la referencia
  * en el banco, confirma con la referencia del banco y entonces se activa el mes.
  */
@@ -63,10 +63,10 @@ const reasonField = safeText(200, { min: 4, label: "El motivo" });
 
 export { transferReference };
 
-/** Estado que ve el comercializador mientras el admin busca la transferencia en el banco. */
+/** Estado que ve el cliente mientras el admin busca la transferencia en el banco. */
 export const REPORTED_STATUS = "reportada, en verificación con el banco";
 
-/** La cuenta que ven los comercializadores para transferir, o null si el admin todavía no la configura. */
+/** La cuenta que ven los clientes para transferir, o null si el admin todavía no la configura. */
 export async function getTransferAccount(): Promise<TransferAccount | null> {
   await ensureReady();
   const [row] = await db.select().from(serviceSetting).where(eq(serviceSetting.id, SETTING_ID));
@@ -134,7 +134,7 @@ async function openTransfer(userId: string, subscriptionId: string, periodIndex:
 
 export interface TransferInstructions {
   account: TransferAccount;
-  /** Lo que el comercializador escribe en la descripción de la transferencia */
+  /** Lo que el cliente escribe en la descripción de la transferencia */
   reference: string;
   amountCop: number;
   planName: string;
@@ -159,7 +159,7 @@ export async function transferInstructions(input: TransferTarget): Promise<Trans
 }
 
 /**
- * El comercializador reporta que ya transfirió el mes. La orden queda "verificando" con el monto que calcula el
+ * El cliente reporta que ya transfirió el mes. La orden queda "verificando" con el monto que calcula el
  * servidor y el comprobante que escribió; no se activa nada hasta que el admin confirme.
  * Reportar el mismo mes otra vez devuelve la misma orden.
  */
@@ -185,7 +185,7 @@ export async function reportTransfer(input: TransferTarget & { receipt: string }
         asset: "COP",
         createdAt: Date.now(),
         method: "transferencia",
-        // El comprobante del banco del comercializador (como en los retiros a cuentas bancarias).
+        // El comprobante del banco del cliente (como en los retiros a cuentas bancarias).
         txHash: receipt,
         providerStatus: REPORTED_STATUS,
         expectedAmount: String(p.amountCop),
@@ -234,7 +234,7 @@ export async function confirmTransfer(actor: Actor, orderId: string, reference: 
   return toTxDTO(r.order);
 }
 
-/** La transferencia no llegó (o no coincide): se cierra con el motivo, que el comercializador ve en sus movimientos. */
+/** La transferencia no llegó (o no coincide): se cierra con el motivo, que el cliente ve en sus movimientos. */
 export async function rejectTransfer(actor: Actor, orderId: string, reason: string) {
   const why = reasonField.parse(reason);
   const order = await requireTransfer(orderId);

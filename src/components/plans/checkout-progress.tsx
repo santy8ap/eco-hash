@@ -18,7 +18,7 @@ export function CheckoutProgress({ current }: { current: number }) {
               className={`flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center ${step === current ? "text-ink" : "text-mute"}`}
             >
               <span
-                className={`num flex h-7 w-7 shrink-0 items-center justify-center border text-xs ${step < current ? "border-ink bg-ink text-void" : step === current ? "border-ink" : "border-line-strong"}`}
+                className={`num flex h-7 w-7 shrink-0 items-center justify-center border text-xs ${step < current ? "border-amber bg-amber text-amber-ink" : step === current ? "border-amber" : "border-line-strong"}`}
                 aria-hidden="true"
               >
                 {step < current ? <Check size={14} /> : `0${step}`}

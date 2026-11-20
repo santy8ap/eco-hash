@@ -15,7 +15,7 @@ import type { TransactionHistory as HistoryDTO } from "@/lib/transactions";
 import { ReceiptButton } from "@/components/payments/receipt-button";
 import { ErrorNote } from "@/components/ui/field";
 import { Status, TX_STATUS } from "@/components/ui/status";
-import { explorerTxUrl, isEvmHash, txDetail, txTitle } from "./tx-meta";
+import { explorerTxUrl, isBtcTxid, txAmount, txDetail, txTitle } from "./tx-meta";
 
 const INITIAL = {
   desde: "",
@@ -183,7 +183,7 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
           No hay movimientos para este período y estos filtros.
         </p>
       ) : (
-        <ul className="mt-8 border-t border-line">
+        <ul className="panel mt-6 px-5 sm:px-6">
           {data.transactions.map((tx) => {
             const status = TX_STATUS[tx.status] ?? TX_STATUS.pendiente;
             const explorer = explorerTxUrl(tx);
@@ -195,7 +195,7 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
             return (
               <li
                 key={tx.id}
-                className="grid min-w-0 gap-x-8 gap-y-3 border-b border-line py-6 sm:grid-cols-[12.5rem_minmax(0,1fr)_auto]"
+                className="grid min-w-0 gap-x-8 gap-y-3 border-b border-line py-5 last:border-b-0 sm:grid-cols-[12.5rem_minmax(0,1fr)_auto]"
               >
                 <p className="num whitespace-nowrap text-sm text-mute">
                   {formatDateTime(tx.createdAt)}
@@ -203,20 +203,15 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
                 <div className="min-w-0">
                   <p>
                     {txTitle(tx)}
-                    {tx.planName ? ` · ${tx.planName}` : ""}
+                    {tx.planName ? `, plan ${tx.planName}` : ""}
                   </p>
                   <p className="mt-1 text-sm leading-relaxed text-fog">
                     {txDetail(tx)}
                   </p>
-                  <p className="num mt-2 break-all text-xs text-mute">
-                    {tx.id}
-                    {tx.kind === "retiro" &&
-                    tx.status === "confirmada" &&
-                    tx.txHash &&
-                    !isEvmHash(tx.txHash)
-                      ? ` · Comprobante ${tx.txHash}`
-                      : ""}
-                  </p>
+                  <p className="num mt-2 break-all text-xs text-mute">{tx.id}</p>
+                  {tx.kind === "retiro" && tx.status === "confirmada" && isBtcTxid(tx.txHash) && (
+                    <p className="hash mt-1 text-xs text-mute">Txid {tx.txHash}</p>
+                  )}
                   <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3">
                     {receiptAvailable && <ReceiptButton id={tx.id} compact />}
                     {tx.method === "mercadopago" &&
@@ -235,7 +230,7 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
                         rel="noreferrer"
                         className="link inline-flex items-center gap-2 text-sm text-fog"
                       >
-                        Ver en BscScan <ExternalLink size={12} />
+                        {tx.kind === "retiro" ? "Ver en mempool.space" : "Ver en BscScan"} <ExternalLink size={12} />
                       </a>
                     )}
                     <Link
@@ -250,8 +245,7 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
                   <p
                     className={`num text-lg ${status.tone === "off" ? "text-dim line-through" : ""}`}
                   >
-                    {tx.kind === "retiro" ? "−" : ""}
-                    {formatCop(tx.amountCop)}
+                    {txAmount(tx) ?? formatCop(tx.amountCop)}
                   </p>
                   <p className="sm:mt-3">
                     <Status tone={status.tone}>{status.label}</Status>
@@ -265,7 +259,7 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
       {data && data.total > 0 && (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-mute">
-            Página {data.page} de {pages} · {data.total} movimientos
+            Página {data.page} de {pages}, {data.total} movimientos
           </p>
           <div className="flex gap-2">
             <button

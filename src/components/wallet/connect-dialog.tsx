@@ -10,7 +10,7 @@ const EMPTY: never[] = [];
 
 function Option({ title, note, icon, onClick, disabled = false }: { title: string; note: string; icon: React.ReactNode; onClick(): void; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center gap-4 border-b border-line py-4 text-left transition-colors hover:bg-ink/5 disabled:opacity-40">
+    <button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center gap-4 border-b border-line py-4 text-left transition-colors hover:bg-seam disabled:opacity-40">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-line-strong">{icon}</span>
       <span>
         <span className="block font-medium">{title}</span>

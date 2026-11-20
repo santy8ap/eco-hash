@@ -145,7 +145,7 @@ function Mark({
 }) {
   return (
     <span
-      className={`flex h-16 w-16 items-center justify-center rounded-full ${tone === "ok" ? "bg-ink text-void" : tone === "wait" ? "border border-dashed border-fog motion-safe:animate-[spin_9s_linear_infinite]" : "border border-ink"}`}
+      className={`flex h-16 w-16 items-center justify-center rounded-full ${tone === "ok" ? "bg-amber text-amber-ink" : tone === "wait" ? "border border-dashed border-fog motion-safe:animate-[spin_9s_linear_infinite]" : "border border-amber"}`}
       aria-hidden="true"
     >
       {children}
@@ -164,7 +164,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
     return (
       <>
         <Mark tone="wait" />
-        <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+        <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
           Confirmando tu pago
         </h1>
         <p className="mt-5 max-w-[46ch] leading-relaxed text-fog">
@@ -179,7 +179,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
         <Mark tone="bad">
           <AlertTriangle size={26} strokeWidth={1.5} />
         </Mark>
-        <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+        <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
           {view.kind === "error"
             ? "No pudimos consultar el pago"
             : "Pago no encontrado"}
@@ -214,7 +214,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
         <Mark tone="ok">
           <Check size={30} strokeWidth={2} />
         </Mark>
-        <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+        <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
           Pago confirmado
         </h1>
         <ConfirmedPlanPayment
@@ -222,7 +222,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
           className="mt-5 max-w-[46ch] leading-relaxed text-fog"
         />
         <Link href="/panel" className="btn btn-solid mt-9">
-          Ver mi energía
+          Ver mi minería
         </Link>
         <div className="mt-4">
           <ReceiptButton id={o.id} />
@@ -237,7 +237,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
         <Mark tone="bad">
           <AlertTriangle size={26} strokeWidth={1.5} />
         </Mark>
-        <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+        <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
           Pago aún sin confirmar
         </h1>
         <p className="mt-5 max-w-[46ch] leading-relaxed text-fog">
@@ -260,7 +260,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
     return (
       <>
         <Mark tone="wait" />
-        <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+        <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
           Tu pago está en proceso
         </h1>
         <p className="mt-5 max-w-[46ch] leading-relaxed text-fog">
@@ -280,7 +280,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
         <Mark tone="bad">
           <AlertTriangle size={26} strokeWidth={1.5} />
         </Mark>
-        <h1 className="display mt-8 text-[clamp(2.5rem,7vw,4rem)]">
+        <h1 className="display mt-8 text-[clamp(2.1rem,4.8vw,3rem)]">
           Recibimos tu pago, pero no pudimos activar el mes
         </h1>
         <p className="mt-5 max-w-[46ch] leading-relaxed text-fog">
@@ -300,7 +300,7 @@ function Body({ view, onRetry }: { view: View; onRetry(): void }) {
       <Mark tone="bad">
         <X size={28} strokeWidth={1.5} />
       </Mark>
-      <h1 className="display mt-8 text-[clamp(2.75rem,8vw,4.5rem)]">
+      <h1 className="display mt-8 text-[clamp(2.2rem,5vw,3.2rem)]">
         El pago no se aprobó
       </h1>
       <p className="mt-5 max-w-[46ch] leading-relaxed text-fog">

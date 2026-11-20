@@ -1,5 +1,5 @@
 import type { AdminAction } from "@/lib/db/schema";
-import type { PlantSettings } from "@/lib/plant-settings";
+import type { FarmSettings } from "@/lib/farm-settings";
 import type { SubscriptionDTO, TxDTO } from "@/lib/portfolio";
 
 export interface AuditEntry {
@@ -14,22 +14,25 @@ export interface AuditEntry {
 }
 
 export interface OverviewDTO {
-  settings: PlantSettings;
-  plantDailyKwh: number;
-  contractedDailyKwh: number;
-  availableDailyKwh: number;
+  settings: FarmSettings;
+  capacityTh: number;
+  contractedTh: number;
+  availableTh: number;
+  /** Hashrate minando ahora mismo y sats que suma por día */
+  activeTh: number;
+  dailySats: number;
   activePlans: number;
   pausedPlans: number;
   clients: number;
   collectedCop: number;
-  generatedKwh: number;
-  soldCop: number;
-  owedCop: number;
-  paidOutCop: number;
+  minedSats: number;
+  /** Sats que se les deben a los clientes: sus saldos más los retiros por enviar */
+  owedSats: number;
+  paidOutSats: number;
   pendingWithdrawals: number;
-  pendingWithdrawalsCop: number;
+  pendingWithdrawalsSats: number;
   paymentsToRefund: number;
-  /** Transferencias reportadas por los comercializadores que esperan confirmación */
+  /** Transferencias reportadas por los clientes que esperan confirmación */
   transfersToConfirm: number;
   /** Devoluciones que requieren conciliación */
   reviewsPending: number;
@@ -61,12 +64,12 @@ export interface AdminClient {
     termsCurrent: boolean;
   } | null;
   plans: SubscriptionDTO[];
-  generatedKwh: number;
-  soldCop: number;
-  profitCop: number;
-  withdrawnCop: number;
-  reservedCop: number;
-  balanceCop: number;
+  minedSats: number;
+  activeTh: number;
+  costCop: number;
+  withdrawnSats: number;
+  reservedSats: number;
+  balanceSats: number;
   /** Transferencias reportadas que esperan confirmación */
   openTransfers: number;
   /** Último pago confirmado (ms) */
@@ -82,8 +85,7 @@ export interface AdminWithdrawal extends TxDTO {
   fullName: string | null;
   companyName: string | null;
   nit: string | null;
-  bankAccountNumber: string | null;
-  signed: boolean;
+  customerId: string | null;
 }
 
 /** Cada acción de la bitácora con su nombre legible. El tipo obliga a nombrar las acciones nuevas. */
@@ -94,7 +96,7 @@ const ACTION_LABEL: Record<AdminAction, string> = {
   confirmar_transferencia: "Transferencia confirmada",
   rechazar_transferencia: "Transferencia rechazada",
   cerrar_plan: "Plan cerrado",
-  aprobar_retiro: "Retiro aprobado",
+  aprobar_retiro: "Retiro enviado",
   rechazar_retiro: "Retiro rechazado",
   reverificar_pago: "Pago re-verificado",
   registrar_hash: "Hash registrado",
@@ -111,9 +113,8 @@ const ACTION_LABEL: Record<AdminAction, string> = {
   cerrar_sesiones: "Sesiones cerradas",
 };
 
-/** Acciones del modelo anterior que siguen en la bitácora. */
+/** Acciones con otro nombre que pueden aparecer en la bitácora. */
 const LEGACY_LABEL: Record<string, string> = {
-  ajuste_kw: "Ajuste (modelo anterior)",
   borrar_datos_demo: "Datos de prueba",
 };
 

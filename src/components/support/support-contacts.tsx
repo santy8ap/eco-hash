@@ -6,7 +6,7 @@ import type { SupportSettings } from "@/lib/support-schema";
 export function SupportContacts({ reference }: { reference?: string }) {
   const { data } = useJson<SupportSettings>("/api/support");
   if (!data?.email && !data?.whatsapp) return null;
-  const message = `Hola, necesito ayuda con ${reference ? `la operación ${reference}` : "mi plan de energía"}.`;
+  const message = `Hola, necesito ayuda con ${reference ? `la operación ${reference}` : "mi plan de minería"}.`;
   return (
     <section
       className="mt-10 border-t border-line pt-7"

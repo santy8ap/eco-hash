@@ -39,7 +39,7 @@ async function completeProfileIfAsked(page: Page) {
   await expect(summary).toBeVisible();
 }
 
-test("transferencia: el admin publica la cuenta, el comercializador reporta el pago y el admin lo confirma", async ({ page }) => {
+test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el admin lo confirma", async ({ page }) => {
   const BANK_REFERENCE = bankReference();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

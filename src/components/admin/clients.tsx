@@ -6,7 +6,7 @@ import { useState } from "react";
 import { postJson, refetch, useJson } from "@/lib/client/use-json";
 import { useCatalog } from "@/lib/client/use-catalog";
 import { downloadCsv } from "@/lib/csv";
-import { formatCop, formatDate, formatNumber } from "@/lib/format";
+import { formatCop, formatDate, formatSats, formatTh } from "@/lib/format";
 import type { SubscriptionDTO } from "@/lib/portfolio";
 import { ErrorNote, Field } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
@@ -59,7 +59,7 @@ export function ManualPaymentDialog({ client, onClose, listUrl }: { client: Admi
     <Modal open onClose={busy ? () => {} : onClose} title="Registrar un pago" wide>
       <p className="leading-relaxed text-fog">
         Para pagos que llegaron por fuera de la página, como una transferencia bancaria de <strong className="font-medium text-ink">{client.profile?.companyName || client.profile?.fullName || client.name}</strong>. Al guardar, el mes
-        queda activo y la energía empieza a contar.
+        queda activo y el hashrate empieza a minar.
       </p>
       <form onSubmit={submit} className="mt-7 space-y-6">
         <Field label="Qué paga">
@@ -107,7 +107,7 @@ export function ClosePlanDialog({ plan, onClose, listUrl }: { plan: Subscription
     setError(null);
     try {
       await postJson(`/api/admin/subscriptions/${plan.id}/close`, { reason });
-      toast("Plan cerrado: dejó de generar energía.");
+      toast("Plan cerrado: dejó de minar.");
       reloadAdmin(listUrl);
       setReason("");
       onClose();
@@ -119,7 +119,7 @@ export function ClosePlanDialog({ plan, onClose, listUrl }: { plan: Subscription
   };
   return (
     <Modal open onClose={busy ? () => {} : onClose} title={`Cerrar el ${plan.planName}`}>
-      <p className="leading-relaxed text-fog">El plan deja de generar energía desde este momento y libera su cupo. Lo que ya generó se conserva en el saldo del cliente. No se puede deshacer.</p>
+      <p className="leading-relaxed text-fog">El plan deja de minar desde este momento y libera su capacidad. Lo que ya minó se conserva en el saldo del cliente. No se puede deshacer.</p>
       <form onSubmit={submit} className="mt-7 space-y-6">
         <Field label="Motivo" hint="Queda en la bitácora. Por ejemplo: el banco devolvió el pago.">
           {(id, aria) => <input id={id} {...aria} value={reason} onChange={(e) => setReason(e.target.value)} autoComplete="off" className="field" />}
@@ -212,7 +212,7 @@ function exportClients(list: AdminClient[]) {
   // La fecha del nombre del archivo, en hora de Colombia (UTC−5), como la exportación de pagos.
   const today = new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 10);
   downloadCsv(`clientes-${today}.csv`, [
-    ["Cliente", "NIT", "Correo", "Titular", "Documento", "Celular", "Ciudad", "Cliente desde", "Último pago", "Planes generando", "Planes en pausa", "Energía kWh", "Saldo COP", "Retirado COP"],
+    ["Cliente", "NIT", "Correo", "Titular", "Documento", "Celular", "Ciudad", "Cliente desde", "Último pago", "Planes minando", "Planes en pausa", "Sats minados", "Saldo en sats", "Retirado en sats"],
     ...list.map((c) => [
       nameOf(c),
       c.profile?.nit ?? "",
@@ -225,9 +225,9 @@ function exportClients(list: AdminClient[]) {
       c.lastPaymentAt ? formatDate(c.lastPaymentAt) : "",
       c.plans.filter((p) => p.state === "activa").length,
       c.plans.filter((p) => p.state === "en_pausa").length,
-      Math.round(c.generatedKwh),
-      c.balanceCop,
-      c.withdrawnCop,
+      Math.floor(c.minedSats),
+      c.balanceSats,
+      c.withdrawnSats,
     ]),
   ]);
 }
@@ -252,7 +252,7 @@ export function AdminClients() {
 
   return (
     <>
-      <AdminTopbar title="Clientes" subtitle="Los comercializadores registrados, sus planes, su energía y su saldo." />
+      <AdminTopbar title="Clientes" subtitle="Los clientes registrados, sus planes, sus sats y su saldo." />
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <form
           role="search"
@@ -287,7 +287,7 @@ export function AdminClients() {
               type="button"
               aria-pressed={segment === g.id}
               onClick={() => setSegment(g.id)}
-              className={`border-b pb-1 text-sm transition-colors ${segment === g.id ? "border-ink text-ink" : "border-transparent text-mute hover:text-ink"}`}
+              className={`border-b pb-1 text-sm transition-colors ${segment === g.id ? "border-amber text-ink" : "border-transparent text-mute hover:text-ink"}`}
             >
               {g.label} <span className="num">{n}</span>
             </button>
@@ -327,7 +327,7 @@ export function AdminClients() {
                 </p>
                 {c.profile ? (
                   <p className="mt-1 text-sm text-mute">
-                    Comercializador: {c.profile.fullName || "sin registrar"}
+                    Titular: {c.profile.fullName || "sin registrar"}
                     {c.profile.docNumber ? `, ${c.profile.docType} ${c.profile.docNumber}` : ""}. {c.profile.phone}, {c.profile.city}.
                   </p>
                 ) : null}
@@ -344,7 +344,7 @@ export function AdminClients() {
                   )}
                 </p>
                 {c.deletionRequest && (
-                  <div className="mt-4 border-l-2 border-ink pl-4 text-sm leading-relaxed">
+                  <div className="mt-4 rounded-[10px] bg-seam px-4 py-3 text-sm leading-relaxed">
                     <p className="font-medium">
                       Pidió eliminar su cuenta el {formatDate(c.deletionRequest.createdAt)}. Responde antes del {formatDate(c.deletionRequest.dueAt)}.
                     </p>
@@ -371,20 +371,20 @@ export function AdminClients() {
               </div>
               <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
                 <div>
-                  <dt className="cap">Energía</dt>
-                  <dd className="num mt-1 whitespace-nowrap">{formatNumber(c.generatedKwh)} kWh</dd>
+                  <dt className="cap">Minado</dt>
+                  <dd className="num mt-1 whitespace-nowrap">{formatSats(c.minedSats)}</dd>
                 </div>
                 <div>
                   <dt className="cap">Saldo</dt>
-                  <dd className="num mt-1 whitespace-nowrap">{formatCop(c.balanceCop)}</dd>
+                  <dd className="num mt-1 whitespace-nowrap">{formatSats(c.balanceSats)}</dd>
                 </div>
                 <div>
                   <dt className="cap">Retirado</dt>
-                  <dd className="num mt-1 whitespace-nowrap">{formatCop(c.withdrawnCop)}</dd>
+                  <dd className="num mt-1 whitespace-nowrap">{formatSats(c.withdrawnSats)}</dd>
                 </div>
               </dl>
               <div className="flex flex-col items-start gap-3 lg:items-end">
-                <button type="button" className="btn btn-ghost" onClick={() => setPaying(c)} disabled={!c.profile?.termsCurrent} title={c.profile?.termsCurrent ? undefined : "El comercializador debe completar sus datos personales primero"}>
+                <button type="button" className="btn btn-ghost" onClick={() => setPaying(c)} disabled={!c.profile?.termsCurrent} title={c.profile?.termsCurrent ? undefined : "El cliente debe completar sus datos personales primero"}>
                   Registrar un pago
                 </button>
                 <Link href={`/admin/clientes/${encodeURIComponent(c.id)}`} className="link text-sm">
@@ -403,7 +403,7 @@ export function AdminClients() {
                   const st = PLAN_STATE[p.state] ?? PLAN_STATE.borrador;
                   return (
                     <li key={p.id} className="flex flex-wrap items-center gap-x-8 gap-y-2 border-b border-line py-3 text-sm last:border-b-0">
-                      <span className="w-24 font-medium">{p.planName}</span>
+                      <span className="w-28 font-medium">Plan {p.planName}</span>
                       <Status tone={st.tone}>{st.label}</Status>
                       <span className="num text-mute">
                         Mes {Math.min(p.paidMonths, p.months)} de {p.months}
@@ -411,7 +411,7 @@ export function AdminClients() {
                       <span className="num text-mute">
                         {p.state === "en_pausa" && p.graceEndsAt ? `Puede pagar hasta el ${formatDate(p.graceEndsAt)}` : `Pagado hasta el ${formatDate(p.paidUntil)}`}
                       </span>
-                      <span className="num text-mute">{formatCop(p.priceCopPerKwh)} / kWh</span>
+                      <span className="num text-mute">{formatTh(p.hashrateTh)}</span>
                       <span className="num ml-auto text-dim">{p.id}</span>
                       {(p.state === "activa" || p.state === "en_pausa") && (
                         <button type="button" className="link text-fog" onClick={() => setClosing(p)}>
@@ -427,7 +427,7 @@ export function AdminClients() {
         ))}
       </ul>
       {!loading && clients.length === 0 && (
-        <p className="py-10 text-mute">{search ? "Ningún comercializador coincide con esa búsqueda." : segment !== "todos" ? "Ningún comercializador está en este grupo." : "Todavía no hay comercializadores registrados."}</p>
+        <p className="py-10 text-mute">{search ? "Ningún cliente coincide con esa búsqueda." : segment !== "todos" ? "Ningún cliente está en este grupo." : "Todavía no hay clientes registrados."}</p>
       )}
 
       <ManualPaymentDialog client={paying} onClose={() => setPaying(null)} listUrl={url} />

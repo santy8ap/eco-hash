@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { planCheckoutHref, renewalCheckoutHref } from "@/lib/navigation";
 import { DAY_MS } from "@/lib/time";
-import { formatCop, formatDate, formatNumber } from "@/lib/format";
+import { formatCop, formatDate, formatHashprice, formatTh } from "@/lib/format";
 import type { SubscriptionDTO } from "@/lib/portfolio";
 import { PLAN_STATE, Status } from "@/components/ui/status";
 /** Qué le pasa al plan y qué puede hacer el usuario, en una frase. */
@@ -10,10 +10,10 @@ function nextStep(s: SubscriptionDTO, now: number | null) {
   const next = s.paidMonths + 1;
   switch (s.state) {
     case "en_revision":
-      return "El proveedor reportó una devolución. El período afectado dejó de generar; contacta a soporte para revisar tu cuenta antes de retirar o pagar otra mensualidad.";
+      return "El proveedor reportó una devolución. El mes afectado dejó de minar; contacta a soporte para revisar tu cuenta antes de retirar o pagar otra mensualidad.";
     case "activa":
       return s.paidMonths < s.months
-        ? `Paga el mes ${next} antes del ${formatDate(s.paidUntil)} para que tu energía no se pause.`
+        ? `Paga el mes ${next} antes del ${formatDate(s.paidUntil)} para que tu hashrate no se detenga.`
         : `Todos los meses están pagados. El plan termina el ${formatDate(s.paidUntil)}.`;
     case "en_pausa":
       if (now != null) {
@@ -21,17 +21,17 @@ function nextStep(s: SubscriptionDTO, now: number | null) {
           (p) => p.startsAt > now && p.endsAt > p.startsAt,
         );
         if (scheduled)
-          return `Tu próximo período ya está pagado y comienza el ${formatDate(scheduled.startsAt)}. La energía se retomará en esa fecha.`;
+          return `Tu próximo mes ya está pagado y empieza el ${formatDate(scheduled.startsAt)}. La minería se retoma en esa fecha.`;
       }
       return `En pausa desde el ${formatDate(s.paidUntil)}. Paga el mes ${next} antes del ${formatDate(s.graceEndsAt ?? s.paidUntil)} o el plan se cierra.`;
     case "completada":
-      return `Terminó el ${formatDate(s.paidUntil)}. Renuévalo para seguir generando energía con los precios vigentes.`;
+      return `Terminó el ${formatDate(s.paidUntil)}. Renuévalo para seguir minando con los precios vigentes.`;
     default:
-      return "Este plan se cerró. Para seguir generando energía, cómpralo de nuevo.";
+      return "Este plan se cerró. Para seguir minando, cómpralo de nuevo.";
   }
 }
 
-/** Un plan del usuario: estado, meses pagados, energía generada y el pago del mes siguiente. */
+/** Un plan del usuario: estado, meses pagados, hashrate, hashprice del mes y el pago del mes siguiente. */
 export function PlanRow({
   sub,
   now,
@@ -40,6 +40,10 @@ export function PlanRow({
   now: number | null;
 }) {
   const state = PLAN_STATE[sub.state] ?? PLAN_STATE.borrador;
+  // El mes que corre (o el último pagado): su hashprice es el que mina ahora.
+  const current =
+    (now != null ? sub.periods.find((p) => p.startsAt <= now && now < p.endsAt) : undefined) ??
+    [...sub.periods].sort((a, b) => b.index - a.index)[0];
   const canPay =
     (sub.state === "activa" || sub.state === "en_pausa") &&
     sub.paidMonths < sub.months;
@@ -55,10 +59,12 @@ export function PlanRow({
     sub.state === "cancelada" ||
     endingSoon;
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-5 border-b border-line py-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_auto] lg:items-center">
+    <li className="panel grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_auto] lg:items-center">
       <div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <h3 className="display text-[2.5rem]">{sub.planName}</h3>
+          <h3 className="text-xl font-semibold">
+            Plan {sub.planName} <span className="num ml-1 text-amber-text">{formatTh(sub.hashrateTh)}</span>
+          </h3>
           <Status tone={state.tone}>{state.label}</Status>
         </div>
         <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-fog">
@@ -67,7 +73,7 @@ export function PlanRow({
       </div>
 
       <div>
-        {/* Un tramo por mes: lleno lo ya generado, vacío lo que falta, punteado lo que no se ha pagado. */}
+        {/* Un tramo por mes: lleno lo ya minado, vacío lo que falta, punteado lo que no se ha pagado. */}
         <div
           className="flex gap-1.5"
           role="img"
@@ -87,11 +93,11 @@ export function PlanRow({
             return (
               <span
                 key={i}
-                className={`relative h-2 flex-1 border ${p ? "border-ink" : "border-dashed border-line-strong"}`}
+                className={`relative h-2 flex-1 overflow-hidden rounded-full ${p ? "bg-amber-soft" : "border border-dashed border-line-strong"}`}
               >
                 {p && (
                   <span
-                    className="absolute inset-y-0 left-0 bg-ink"
+                    className="absolute inset-y-0 left-0 rounded-full bg-amber"
                     style={{ width: `${done * 100}%` }}
                   />
                 )}
@@ -107,12 +113,12 @@ export function PlanRow({
             </dd>
           </div>
           <div>
-            <dt className="cap">Cada día</dt>
-            <dd className="num mt-1">{formatNumber(sub.dailyKwh)} kWh</dd>
+            <dt className="cap">Hashprice del mes</dt>
+            <dd className="num mt-1">{current ? formatHashprice(current.satsPerThDay) : "—"}</dd>
           </div>
           <div>
-            <dt className="cap">Precio por kWh</dt>
-            <dd className="num mt-1">{formatCop(sub.priceCopPerKwh)}</dd>
+            <dt className="cap">Mensualidad</dt>
+            <dd className="num mt-1">{formatCop(sub.monthlyCop)}</dd>
           </div>
         </dl>
       </div>
@@ -131,8 +137,8 @@ export function PlanRow({
           className={`btn ${sub.state === "completada" ? "btn-solid" : "btn-ghost"} lg:justify-self-end`}
         >
           {sub.state === "vencida" || sub.state === "cancelada"
-            ? `Comprar de nuevo el ${sub.planName}`
-            : `Renovar el ${sub.planName}`}
+            ? `Comprar de nuevo el plan ${sub.planName}`
+            : `Renovar el plan ${sub.planName}`}
         </Link>
       )}
       {sub.state === "en_revision" && (

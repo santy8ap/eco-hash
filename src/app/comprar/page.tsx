@@ -28,7 +28,7 @@ async function Purchase({ searchParams }: { searchParams: Promise<Params> }) {
   if ((!plan && !suscripcion) || (plan && suscripcion)) {
     return (
       <main className="mx-auto max-w-[700px] px-5 py-24">
-        <h1 className="display text-5xl">Elige tu plan de energía</h1>
+        <h1 className="display text-4xl">Elige tu plan de hashrate</h1>
         <p className="mt-5 leading-relaxed text-fog">
           Compara los precios de compra y venta y continúa con el plan que
           prefieras.
@@ -97,7 +97,7 @@ export default function PurchasePage({ searchParams }: PageProps<"/comprar">) {
     <Suspense
       fallback={
         <main
-          className="mx-auto max-w-[1240px] space-y-8 px-5 py-16"
+          className="mx-auto max-w-[1200px] space-y-8 px-5 py-16"
           aria-busy="true"
           aria-label="Cargando la compra"
         >

@@ -7,7 +7,7 @@ import type { AppConfigDTO } from "@/lib/app-config";
 import { clearPending, savePending } from "@/lib/client/pending-crypto";
 import { useAppConfig } from "@/lib/client/use-app-config";
 import { invalidateJson, refetch } from "@/lib/client/use-json";
-import { usePlantNow } from "@/lib/client/use-catalog";
+import { useFarmNow } from "@/lib/client/use-catalog";
 import { formatCop, shortAddress } from "@/lib/format";
 import type { TxDTO } from "@/lib/portfolio";
 import { buildPayerProofMessage } from "@/lib/signing";
@@ -128,10 +128,9 @@ const target = (r: CheckoutRequest) => ({
     ? { subscriptionId: r.subscriptionId }
     : { planId: r.planId }),
   expectedAmountCop: r.amountCop,
-  expectedSaleCopPerKwh: r.saleCopPerKwh,
 });
 
-/** Después de un pago confirmado, el panel debe mostrar el plan y el cupo actualizados. */
+/** Después de un pago confirmado, el panel debe mostrar el plan y la capacidad actualizados. */
 function refreshAfterPayment() {
   invalidateJson("/api/transactions");
   void refetch("/api/portfolio");
@@ -213,7 +212,7 @@ export function CheckoutPayment({
             />
             <span
               aria-hidden="true"
-              className="mt-1 h-3.5 w-3.5 shrink-0 border border-fog peer-checked:border-ink peer-checked:bg-ink peer-checked:shadow-[inset_0_0_0_2.5px_var(--color-void)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink"
+              className="mt-1 h-3.5 w-3.5 shrink-0 border border-fog peer-checked:border-amber peer-checked:bg-amber peer-checked:shadow-[inset_0_0_0_2.5px_var(--color-void)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-amber"
             />
             <span className="min-w-0">
               <span className="block font-medium">{m.label}</span>
@@ -307,7 +306,7 @@ function MercadoPagoPay({
         {cards
           ? "Te llevamos al pago seguro de Mercado Pago. Allí eliges PSE o tarjeta; Nequi y Daviplata aparecen dentro de PSE, con sus propios topes."
           : `Te llevamos al pago seguro de Mercado Pago, donde pagas por PSE desde una cuenta bancaria a tu nombre: Mercado Pago recibe tarjetas solo hasta ${formatCop(cardMaxCop)}. Antes, confirma con tu banco que tengas habilitado un pago de ${formatCop(request.amountCop)} por PSE.`}{" "}
-        Al terminar vuelves a {BRAND.name} y tu energía empieza a contar apenas
+        Al terminar vuelves a {BRAND.name} y tu hashrate empieza a minar apenas
         el pago quede aprobado.
       </p>
       {error && <ErrorNote className="mt-5">{error}</ErrorNote>}
@@ -485,8 +484,8 @@ function TransferPay({ request, onClose, onBusy }: PayProps) {
               y el comprobante <span className="num">{reported.txHash}</span>
             </>
           ) : null}
-          . Cuando la confirmemos, el mes se activa y tu energía empieza a
-          contar. Mientras tanto la ves en tus movimientos como «En
+          . Cuando la confirmemos, el mes se activa y tu hashrate empieza a
+          minar. Mientras tanto la ves en tus movimientos como «En
           verificación».
         </p>
         <div className="mt-7 flex flex-wrap justify-end gap-3">
@@ -583,7 +582,7 @@ function Done({
           Cerrar
         </button>
         <Link href="/panel" className="btn btn-solid" onClick={onClose}>
-          Ver mi energía
+          Ver mi minería
         </Link>
       </div>
     </div>
@@ -620,7 +619,7 @@ function TestPay({ request, onClose, onBusy, onConfirmed }: PayProps) {
   if (done)
     return (
       <Done onClose={onClose}>
-        Mes activado. La energía de tu plan ya está contando.
+        Mes activado. Tu hashrate ya está minando.
       </Done>
     );
   return (
@@ -723,7 +722,7 @@ function CryptoPay({
   const user = useUser();
   const [phase, setPhase] = useState<Phase>("inicio");
   const [quote, setQuote] = useState<Quote | null>(null);
-  const now = usePlantNow(1000);
+  const now = useFarmNow(1000);
   const [status, setStatus] = useState<CryptoState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualHash, setManualHash] = useState("");
@@ -876,7 +875,7 @@ function CryptoPay({
   if (done)
     return (
       <Done onClose={onClose}>
-        Pago confirmado en la red. La energía de tu plan ya está contando.
+        Pago confirmado en la red. Tu hashrate ya está minando.
       </Done>
     );
 
@@ -945,7 +944,7 @@ function CryptoPay({
               className="flex items-start gap-4 border-b border-line py-3"
             >
               <span
-                className={`num flex h-6 w-6 shrink-0 items-center justify-center border text-xs ${isDone ? "border-ink bg-ink text-void" : active || current ? "border-ink text-ink" : "border-line-strong text-dim"}`}
+                className={`num flex h-6 w-6 shrink-0 items-center justify-center border text-xs ${isDone ? "border-amber bg-amber text-amber-ink" : active || current ? "border-amber text-ink" : "border-line-strong text-dim"}`}
               >
                 {isDone ? (
                   <Check size={13} strokeWidth={2.4} />

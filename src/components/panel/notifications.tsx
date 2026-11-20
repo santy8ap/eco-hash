@@ -63,7 +63,7 @@ export function NotificationsPage() {
               <div className="flex items-start gap-4">
                 <span
                   role="img"
-                  className={`mt-2 h-1.5 w-1.5 shrink-0 ${seen.has(item.id) ? "bg-line-strong" : "bg-ink"}`}
+                  className={`mt-2 h-1.5 w-1.5 shrink-0 ${seen.has(item.id) ? "bg-line-strong" : "bg-amber"}`}
                   aria-label={seen.has(item.id) ? "Leído" : "Sin leer"}
                 />
                 <div className="min-w-0 flex-1">

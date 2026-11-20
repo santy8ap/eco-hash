@@ -6,7 +6,7 @@ import { ThemeSelector } from "@/components/ui/theme-selector";
 
 /** Dato que la empresa debe completar con su abogado: se ve subrayado con una línea punteada. */
 export function Ph({ children }: { children: React.ReactNode }) {
-  return <span className="border-b border-dashed border-ink text-ink">{children}</span>;
+  return <span className="border-b border-dashed border-amber text-ink">{children}</span>;
 }
 
 export interface LegalSection {
@@ -19,7 +19,7 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
   return (
     <>
       <header className="border-b border-line">
-        <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between gap-6 px-5 sm:px-8">
+        <div className="mx-auto flex h-[72px] max-w-[1200px] items-center justify-between gap-6 px-4 sm:px-8">
           <Link href="/" aria-label={`${BRAND.name}, inicio`}>
             <Logo />
           </Link>
@@ -31,7 +31,7 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
           </div>
         </div>
       </header>
-      <main className="mx-auto grid grid-cols-[minmax(0,1fr)] w-full max-w-[1240px] gap-x-16 px-5 pb-28 pt-12 sm:px-8 sm:pt-16 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <main className="mx-auto grid grid-cols-[minmax(0,1fr)] w-full max-w-[1200px] gap-x-16 px-5 pb-28 pt-12 sm:px-8 sm:pt-16 lg:grid-cols-[240px_minmax(0,1fr)]">
         <nav aria-label="Contenido" className="hidden lg:block">
           <ol className="sticky top-10 space-y-2.5 text-sm text-mute">
             {sections.map((s, i) => (
@@ -46,12 +46,12 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
         </nav>
         <article className="min-w-0 max-w-[70ch]">
           {!LEGAL.reviewed && (
-            <p role="note" className="mb-10 border-l-2 border-ink pl-4 text-sm leading-relaxed text-fog">
+            <p role="note" className="mb-10 rounded-[10px] bg-seam px-4 py-3 text-sm leading-relaxed text-fog">
               <strong className="font-medium text-ink">Borrador para revisión legal.</strong> Este texto es una plantilla: un abogado debe revisarlo y completar los datos subrayados antes de usarlo con
               clientes reales.
             </p>
           )}
-          <h1 className="display text-[clamp(2.75rem,7vw,5rem)]">{title}</h1>
+          <h1 className="display text-[clamp(2.2rem,5vw,3.4rem)]">{title}</h1>
           <p className="num mt-5 text-sm text-mute">
             {LEGAL.company} · Versión {LEGAL.version}
           </p>

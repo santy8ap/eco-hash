@@ -1,5 +1,5 @@
 /**
- * Validación de los datos personales del comercializador. Isomórfico: lo usa el formulario
+ * Validación de los datos personales del cliente. Isomórfico: lo usa el formulario
  * (para avisar al instante) y el servidor (que es quien decide).
  */
 
@@ -16,7 +16,7 @@ export interface ProfileValue {
   /** Datos opcionales de compatibilidad para clientes y perfiles anteriores. */
   companyName?: string;
   nit?: string;
-  /** Nombre completo del comercializador. */
+  /** Nombre completo del cliente. */
   fullName: string;
   docType: DocTypeId;
   docNumber: string;

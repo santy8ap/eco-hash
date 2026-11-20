@@ -6,7 +6,7 @@ export function BackupSection() {
         Respaldo de los datos
       </h2>
       <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-mute">
-        Una copia de todos los datos del negocio: los comercializadores y sus datos personales, los planes, los pagos, los retiros, las solicitudes y la bitácora. No incluye las sesiones ni los
+        Una copia de todos los datos del negocio: los clientes y sus datos personales, los planes, los pagos, los retiros, las solicitudes y la bitácora. No incluye las sesiones ni los
         accesos de Google. Descarga uno cada semana y antes de cualquier cambio grande, y guárdalo cifrado: tiene datos personales. Cada descarga queda en la bitácora. Para restaurarlo en una base
         nueva, sigue la guía del README.
       </p>

@@ -1,35 +1,23 @@
 "use client";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PLANS } from "@/config/plans";
 import { goToLoginIfSignedOut, refetch, SESSION_CLOSED, useJson } from "@/lib/client/use-json";
-import { usePlantNow } from "@/lib/client/use-catalog";
-import { plantDailyKwh } from "@/lib/energy/solar-day";
-import {
-  formatCop,
-  formatDateTime,
-  formatNumber,
-  formatPct,
-} from "@/lib/format";
-import {
-  catalogFrom,
-  solarFrom,
-  validateSettings,
-  type PlantSettings,
-} from "@/lib/plant-settings";
-import { SolarClock } from "@/components/solar/solar-clock";
+import { useNetwork } from "@/lib/client/use-network";
+import { catalogFrom, validateSettings, type FarmSettings } from "@/lib/farm-settings";
+import { formatCop, formatDateTime, formatHashprice, formatHashrate, formatNumber, formatPct, formatTh } from "@/lib/format";
+import { estimateReturn } from "@/lib/mining/plan-math";
 import { ErrorNote, Field } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
 import { AdminTopbar } from "./shell";
 import type { OverviewDTO } from "./types";
 
-/** "8.000" o "8000" → 8000. Vacío o con letras → NaN, y la validación lo explica. */
-function toInt(text: string) {
-  const digits = text.replace(/[.\s]/g, "");
-  return /^\d+$/.test(digits) ? Number(digits) : Number.NaN;
+/** "30.000" o "30000" → 30000; "41,5" → 41.5. Vacío o con letras → NaN, y la validación lo explica. */
+function toNumber(text: string) {
+  const clean = text.replace(/[.\s]/g, "").replace(",", ".");
+  return /^\d+(\.\d+)?$/.test(clean) ? Number(clean) : Number.NaN;
 }
 
-async function saveSettings(next: Omit<PlantSettings, "updatedAt">) {
+async function saveSettings(next: Omit<FarmSettings, "updatedAt">) {
   const res = await fetch("/api/admin/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -37,73 +25,47 @@ async function saveSettings(next: Omit<PlantSettings, "updatedAt">) {
   });
   if (goToLoginIfSignedOut(res)) throw new Error(SESSION_CLOSED);
   const json = await res.json().catch(() => ({}));
-  if (!res.ok)
-    throw new Error(
-      (json as { error?: string }).error ?? "No se pudo guardar.",
-    );
-  return json as PlantSettings;
+  if (!res.ok) throw new Error((json as { error?: string }).error ?? "No se pudo guardar.");
+  return json as FarmSettings;
 }
 
-function PlantForm({
-  initial,
-  contractedDailyKwh,
-}: {
-  initial: PlantSettings;
-  contractedDailyKwh: number;
-}) {
+function FarmForm({ initial, contractedTh }: { initial: FarmSettings; contractedTh: number }) {
+  const { data: net } = useNetwork();
   const [name, setName] = useState(initial.name);
   const [location, setLocation] = useState(initial.location);
-  const [peak, setPeak] = useState(formatNumber(initial.peakKw));
-  const [sale, setSale] = useState(String(initial.saleCopPerKwh));
+  const [capacity, setCapacity] = useState(formatNumber(initial.capacityTh));
+  const [hashprice, setHashprice] = useState(formatNumber(initial.satsPerThDay, Number.isInteger(initial.satsPerThDay) ? 0 : 1));
   const [prices, setPrices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      PLANS.map((p) => [
-        p.id,
-        String(initial.planPrices[p.id] ?? p.priceCopPerKwh),
-      ]),
-    ),
+    Object.fromEntries(PLANS.map((p) => [p.id, String(initial.planPrices[p.id] ?? p.priceCopPerThMonth)])),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const now = usePlantNow(30_000);
 
   const next = useMemo(
     () => ({
       name: name.trim(),
       location: location.trim(),
-      peakKw: toInt(peak),
-      saleCopPerKwh: toInt(sale),
-      planPrices: Object.fromEntries(
-        PLANS.map((p) => [p.id, toInt(prices[p.id] ?? "")]),
-      ),
+      capacityTh: toNumber(capacity),
+      satsPerThDay: toNumber(hashprice),
+      planPrices: Object.fromEntries(PLANS.map((p) => [p.id, toNumber(prices[p.id] ?? "")])),
     }),
-    [name, location, peak, sale, prices],
+    [name, location, capacity, hashprice, prices],
   );
-  const problem = validateSettings(
-    { ...next, updatedAt: null },
-    { contractedDailyKwh },
-  );
+  const problem = validateSettings({ ...next, updatedAt: null }, { contractedTh });
   const dirty =
     next.name !== initial.name ||
     next.location !== initial.location ||
-    next.peakKw !== initial.peakKw ||
-    next.saleCopPerKwh !== initial.saleCopPerKwh ||
+    next.capacityTh !== initial.capacityTh ||
+    next.satsPerThDay !== initial.satsPerThDay ||
     PLANS.some((p) => next.planPrices[p.id] !== initial.planPrices[p.id]);
 
-  const peakOk = Number.isFinite(next.peakKw) && next.peakKw >= 100;
-  const solar = solarFrom({ peakKw: peakOk ? next.peakKw : initial.peakKw });
-  const daily = plantDailyKwh(solar);
-  const saleOk = Number.isFinite(next.saleCopPerKwh) && next.saleCopPerKwh > 0;
+  const hashpriceOk = Number.isFinite(next.satsPerThDay) && next.satsPerThDay > 0;
   // La economía de cada plan con lo que hay escrito; si un precio no es un número, esa fila queda sin cifras.
   const preview = catalogFrom({
-    saleCopPerKwh: saleOk ? next.saleCopPerKwh : initial.saleCopPerKwh,
-    planPrices: Object.fromEntries(
-      PLANS.map((p) => [
-        p.id,
-        Number.isFinite(next.planPrices[p.id]) ? next.planPrices[p.id] : 0,
-      ]),
-    ),
+    satsPerThDay: hashpriceOk ? next.satsPerThDay : initial.satsPerThDay,
+    planPrices: Object.fromEntries(PLANS.map((p) => [p.id, Number.isFinite(next.planPrices[p.id]) ? next.planPrices[p.id] : 0])),
   });
+  const networkHashprice = net && net.network.source === "mempool" ? Math.round(net.network.networkHashpriceSats * 10) / 10 : null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,11 +74,8 @@ function PlantForm({
     setError(null);
     try {
       await saveSettings(next);
-      toast("Cambios guardados.");
-      await Promise.all([
-        refetch("/api/admin/overview"),
-        refetch("/api/plans"),
-      ]);
+      toast("Cambios guardados. Los meses que se activen desde ahora usan estos valores.");
+      await Promise.all([refetch("/api/admin/overview"), refetch("/api/plans")]);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -125,227 +84,118 @@ function PlantForm({
   };
 
   return (
-    <form onSubmit={submit} noValidate>
-      <section
-        className="grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-10 border-t border-line-strong pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
-        aria-labelledby="plant-title"
-      >
-        <div>
-          <h2 id="plant-title" className="text-xl font-medium">
-            La planta
-          </h2>
-          <div className="mt-7 space-y-7">
-            <Field label="Nombre">
-              {(id, aria) => (
-                <input
-                  id={id}
-                  {...aria}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={60}
-                  autoComplete="off"
-                  className="field"
-                />
-              )}
-            </Field>
-            <Field label="Ubicación">
-              {(id, aria) => (
-                <input
-                  id={id}
-                  {...aria}
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  maxLength={80}
-                  autoComplete="off"
-                  className="field"
-                />
-              )}
-            </Field>
-            <Field
-              label="Potencia máxima (kW)"
-              hint={`Es el punto más alto del reloj solar. Con ${peakOk ? formatNumber(next.peakKw) : "esa potencia"} kW la planta entrega ${formatNumber(daily)} kWh al día, y ese es el cupo que se reparte entre los planes. Hoy hay ${formatNumber(contractedDailyKwh)} kWh diarios contratados.`}
-            >
-              {(id, aria) => (
-                <input
-                  id={id}
-                  {...aria}
-                  value={peak}
-                  onChange={(e) => setPeak(e.target.value)}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="field num"
-                />
-              )}
-            </Field>
-          </div>
-        </div>
-        <div>
-          <p className="cap">Así se ve el reloj solar</p>
-          <SolarClock solar={solar} now={now} size="panel" className="mt-4" />
-        </div>
-      </section>
-
-      <section
-        className="mt-14 border-t border-line-strong pt-8"
-        aria-labelledby="prices-title"
-      >
-        <h2 id="prices-title" className="text-xl font-medium">
-          Precios
+    <form onSubmit={submit} noValidate className="space-y-3">
+      <section className="panel grid gap-x-8 gap-y-6 p-5 sm:grid-cols-2 sm:p-7" aria-labelledby="granja-datos">
+        <h2 id="granja-datos" className="text-lg font-semibold sm:col-span-2">
+          La granja
         </h2>
-        <p className="mt-3 max-w-[70ch] text-sm leading-relaxed text-mute">
-          Los precios nuevos valen para los planes que se compren desde ahora.
-          Los planes ya contratados conservan el precio y la venta con que se
-          compraron.
-        </p>
+        <Field label="Nombre">{(id, aria) => <input id={id} {...aria} value={name} onChange={(e) => setName(e.target.value)} className="field" maxLength={60} />}</Field>
+        <Field label="Ubicación">{(id, aria) => <input id={id} {...aria} value={location} onChange={(e) => setLocation(e.target.value)} className="field" maxLength={80} />}</Field>
+        <Field label="Capacidad que se puede vender (TH/s)" hint={`Ya hay ${formatHashrate(contractedTh)} contratados: la capacidad no puede ser menor.`}>
+          {(id, aria) => <input id={id} {...aria} inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="field num" />}
+        </Field>
         <Field
-          label="Precio de venta de la energía (COP por kWh)"
-          hint="A este precio se le vende la energía de todos los planes."
-          className="mt-7 max-w-[340px]"
+          label="Hashprice (sats por TH/s al día)"
+          hint="Cada mes que se activa desde ahora mina con este valor; los meses ya activos conservan el suyo."
         >
           {(id, aria) => (
-            <input
-              id={id}
-              {...aria}
-              value={sale}
-              onChange={(e) => setSale(e.target.value)}
-              inputMode="numeric"
-              autoComplete="off"
-              className="field num"
-            />
+            <div className="flex items-center gap-3">
+              <input id={id} {...aria} inputMode="decimal" value={hashprice} onChange={(e) => setHashprice(e.target.value)} className="field num" />
+              {networkHashprice != null && (
+                <button type="button" className="btn btn-ghost shrink-0 px-3 text-sm" onClick={() => setHashprice(formatNumber(networkHashprice, 1))}>
+                  Usar el de la red ({formatNumber(networkHashprice, 1)})
+                </button>
+              )}
+            </div>
           )}
         </Field>
-
-        <div
-          className="mt-10 hidden grid-cols-[1.1fr_1fr_0.8fr_1.1fr_1.1fr] gap-x-6 border-b border-line-strong pb-3 md:grid"
-          aria-hidden="true"
-        >
-          <span className="cap">Plan</span>
-          <span className="cap">Precio por kWh</span>
-          <span className="cap">Utilidad</span>
-          <span className="cap">Pago mensual</span>
-          <span className="cap">Utilidad del plan</span>
-        </div>
-        <ul>
-          {preview.map((p) => {
-            const valid =
-              Number.isFinite(next.planPrices[p.id]) &&
-              next.planPrices[p.id] > 0 &&
-              saleOk &&
-              next.planPrices[p.id] < next.saleCopPerKwh;
-            return (
-              <li
-                key={p.id}
-                className="grid grid-cols-2 gap-x-6 gap-y-4 border-b border-line py-5 md:grid-cols-[1.1fr_1fr_0.8fr_1.1fr_1.1fr] md:items-end"
-              >
-                <div className="col-span-2 md:col-span-1">
-                  <p className="text-lg font-medium">{p.name}</p>
-                  <p className="num mt-1 text-sm text-mute">
-                    {formatNumber(p.totalKwh)} kWh
-                  </p>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label htmlFor={`price-${p.id}`} className="cap md:sr-only">
-                    Precio por kWh del {p.name}
-                  </label>
-                  <input
-                    id={`price-${p.id}`}
-                    value={prices[p.id] ?? ""}
-                    onChange={(e) =>
-                      setPrices((prev) => ({ ...prev, [p.id]: e.target.value }))
-                    }
-                    inputMode="numeric"
-                    autoComplete="off"
-                    aria-invalid={!valid}
-                    className="field num"
-                  />
-                </div>
-                <div>
-                  <p className="cap md:hidden">Utilidad</p>
-                  <p className="num mt-1 text-lg md:mt-0 md:pb-[0.7rem]">
-                    {valid ? formatPct(p.profitPct, 0) : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="cap md:hidden">Pago mensual</p>
-                  <p className="num mt-1 md:mt-0 md:pb-[0.7rem]">
-                    {valid ? formatCop(p.monthlyCop) : "—"}
-                  </p>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <p className="cap md:hidden">Utilidad del plan</p>
-                  <p className="num mt-1 md:mt-0 md:pb-[0.7rem]">
-                    {valid ? formatCop(p.totalProfitCop) : "—"}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
       </section>
 
-      <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
-        <button
-          type="submit"
-          className="btn btn-solid"
-          disabled={busy || !dirty || !!problem}
-        >
-          {busy ? "Guardando…" : "Guardar los cambios"}
+      <section className="panel p-5 sm:p-7" aria-labelledby="granja-precios">
+        <h2 id="granja-precios" className="text-lg font-semibold">
+          Precios de los planes
+        </h2>
+        <p className="mt-1 text-sm text-mute">
+          Precio por TH/s al mes, en pesos. Cada plan comprado conserva su precio{net ? `; la estimación usa el BTC a ${formatCop(net.btc.cop)}` : ""}.
+        </p>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="text-left text-mute">
+                <th scope="col" className="pb-3 font-normal">Plan</th>
+                <th scope="col" className="pb-3 font-normal">Precio por TH/s</th>
+                <th scope="col" className="pb-3 text-right font-normal">Mensualidad</th>
+                <th scope="col" className="pb-3 text-right font-normal">Sats al mes</th>
+                <th scope="col" className="pb-3 text-right font-normal">Para el cliente, al BTC de hoy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map((plan) => {
+                const est = net && plan.monthlyCop > 0 ? estimateReturn(plan, net.btc.cop) : null;
+                return (
+                  <tr key={plan.id} className="border-t border-line">
+                    <th scope="row" className="py-3 pr-4 text-left font-medium">
+                      {plan.name} <span className="num text-mute">{formatTh(plan.hashrateTh)}</span>
+                    </th>
+                    <td className="py-3 pr-4">
+                      <label className="sr-only" htmlFor={`price-${plan.id}`}>
+                        Precio por TH/s del plan {plan.name}
+                      </label>
+                      <input
+                        id={`price-${plan.id}`}
+                        inputMode="numeric"
+                        value={prices[plan.id] ?? ""}
+                        onChange={(e) => setPrices({ ...prices, [plan.id]: e.target.value })}
+                        className="field num max-w-[9rem] !py-2"
+                      />
+                    </td>
+                    <td className="num py-3 text-right">{plan.monthlyCop > 0 ? formatCop(plan.monthlyCop) : "—"}</td>
+                    <td className="num py-3 text-right">{formatNumber(plan.monthlySats)}</td>
+                    <td className="num py-3 text-right">
+                      {est ? (
+                        <span className={est.profitPct >= 0 ? "text-jade-text" : "text-coral"}>
+                          {est.profitPct >= 0 ? "+" : "−"}
+                          {formatPct(Math.abs(est.profitPct), 1)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {problem && dirty && <ErrorNote>{problem}</ErrorNote>}
+      {error && <ErrorNote>{error}</ErrorNote>}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <p className="text-sm text-mute">
+          {initial.updatedAt ? `Última modificación: ${formatDateTime(initial.updatedAt)}.` : "Valores iniciales, sin cambios todavía."} Hashprice vigente:{" "}
+          {formatHashprice(initial.satsPerThDay)}.
+        </p>
+        <button type="submit" className="btn btn-solid" disabled={busy || !dirty || !!problem}>
+          {busy ? "Guardando…" : "Guardar cambios"}
         </button>
-        {dirty && problem ? (
-          <p
-            className="max-w-[60ch] text-sm leading-relaxed text-ink"
-            role="status"
-          >
-            {problem}
-          </p>
-        ) : (
-          <p className="text-sm text-mute">
-            {initial.updatedAt
-              ? `Última modificación: ${formatDateTime(initial.updatedAt)}.`
-              : "Todavía con los valores iniciales."}
-          </p>
-        )}
       </div>
-      {error && <ErrorNote className="mt-6">{error}</ErrorNote>}
     </form>
   );
 }
 
-export function AdminPlant() {
-  const { data, error } = useJson<OverviewDTO>("/api/admin/overview", {
-    refreshMs: 15_000,
-  });
+export function AdminFarm() {
+  const { data, error } = useJson<OverviewDTO>("/api/admin/overview");
   return (
     <>
-      <AdminTopbar
-        title="Planta"
-        subtitle="El reloj solar, el cupo de energía y los precios de los planes."
-      />
-      {!data ? (
-        error ? (
-          <ErrorNote>{error}</ErrorNote>
-        ) : (
-          <div
-            className="skeleton h-[420px]"
-            aria-busy="true"
-            aria-label="Cargando la configuración"
-          />
-        )
+      <AdminTopbar title="Granja" subtitle="Capacidad, hashprice y precios de los planes. Los cambios aplican a los meses que se activen desde ahora." />
+      {data ? (
+        <FarmForm key={data.settings.updatedAt ?? 0} initial={data.settings} contractedTh={data.contractedTh} />
+      ) : error ? (
+        <ErrorNote>{error}</ErrorNote>
       ) : (
-        // La llave cambia cuando alguien guarda: el formulario toma los valores recién guardados sin perder lo que se esté escribiendo.
-        <PlantForm
-          key={data.settings.updatedAt ?? 0}
-          initial={data.settings}
-          contractedDailyKwh={data.contractedDailyKwh}
-        />
+        <div className="skeleton h-[420px]" aria-busy="true" />
       )}
-      <p className="mt-14 border-t border-line pt-6 text-sm text-mute">
-        La cuenta para transferencias, el contacto de soporte y las alertas por correo están en{" "}
-        <Link href="/admin/configuracion" className="link text-ink">
-          Configuración
-        </Link>
-        .
-      </p>
     </>
   );
 }

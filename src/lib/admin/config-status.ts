@@ -236,7 +236,7 @@ export async function configStatus({
     detail:
       support.email || support.whatsapp
         ? "Hay un contacto publicado en el centro de ayuda."
-        : "Guarda un correo o WhatsApp real más abajo, en «Atención al comercializador».",
+        : "Guarda un correo o WhatsApp real más abajo, en «Atención al cliente».",
     required: true,
   });
   add({
@@ -281,11 +281,11 @@ export async function configStatus({
   add({
     id: "correos-clientes",
     group: "Correos",
-    title: "Correos a los comercializadores",
+    title: "Correos a los clientes",
     state: customer.enabled ? "ok" : "aviso",
     detail: customer.enabled
       ? `Se envían desde ${customer.from}: pago confirmado, retiro pagado, mensualidad por vencer, plan en pausa y más.`
-      : `${customer.reason} Sin esto, los comercializadores solo ven los avisos dentro de su panel.`,
+      : `${customer.reason} Sin esto, los clientes solo ven los avisos dentro de su panel.`,
     vars: ["CUSTOMER_EMAIL_FROM", "RESEND_API_KEY"],
     required: false,
   });

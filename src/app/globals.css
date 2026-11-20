@@ -24,6 +24,8 @@
   --color-amber-ink: #1c1304;
   --color-amber-text: #f6b24a;
   --color-amber-soft: rgb(244 166 42 / 0.14);
+  /* Las columnas de las gráficas: un ámbar más profundo, validado contra la superficie (3:1 o más) */
+  --color-chart: #c8841e;
   /* En línea, sano, positivo */
   --color-jade: #3dd598;
   --color-jade-text: #5be0aa;
@@ -64,6 +66,7 @@
     --color-amber-ink: #1c1304;
     --color-amber-text: #8f5206;
     --color-amber-soft: rgb(240 160 32 / 0.16);
+    --color-chart: #b9700a;
     --color-jade: #13a26f;
     --color-jade-text: #0b7650;
     --color-coral: #c8412d;
@@ -167,6 +170,33 @@
   .tile {
     background: var(--color-seam);
     border-radius: var(--radius-tile);
+  }
+
+  /* La barra de cada plan: ámbar con una trama fina, como las aletas de un disipador. */
+  .plan-bar {
+    background:
+      repeating-linear-gradient(90deg, transparent 0 6px, rgb(0 0 0 / 0.16) 6px 8px),
+      var(--color-amber);
+  }
+
+  /* Una fila de lecturas dentro de un solo panel: dos columnas en celular, cuatro en escritorio. */
+  .kpi-strip > * {
+    border-color: var(--color-line);
+  }
+  .kpi-strip > *:nth-child(odd) {
+    border-right-width: 1px;
+  }
+  .kpi-strip > *:nth-child(-n + 2) {
+    border-bottom-width: 1px;
+  }
+  @media (min-width: 1024px) {
+    .kpi-strip > * {
+      border-bottom-width: 0 !important;
+      border-right-width: 1px;
+    }
+    .kpi-strip > *:last-child {
+      border-right-width: 0;
+    }
   }
 
   .btn {

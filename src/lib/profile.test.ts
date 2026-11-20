@@ -23,7 +23,7 @@ const input = { companyName: "Energía Andina S.A.S.", nit: "900.123.456-8", ful
 
 const personal = { fullName: "Laura Gómez", docType: "CC", docNumber: "1.036.123.456", phone: "300 123 4567", city: "Medellín", acceptTerms: true };
 
-describe("datos del comercializador", () => {
+describe("datos del cliente", () => {
   it("guarda un perfil personal y permite continuar al pago sin razón social ni NIT", async () => {
     const saved = await profile.saveProfile("inv-016", personal);
     expect(saved).toMatchObject({ companyName: "", nit: "", fullName: "Laura Gómez", docNumber: "1036123456", complete: true });

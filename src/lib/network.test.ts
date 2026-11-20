@@ -5,7 +5,7 @@ const NOW = Date.UTC(2026, 10, 20, 18, 0);
 
 const FIXTURES: Record<string, unknown> = {
   "/v1/blocks": [
-    { height: 974_120, timestamp: NOW / 1000 - 240, extras: { totalFees: 2_000_000 } },
+    { id: "00000000000000000001a6f3c2be7d4598e0c1f2a3b4c5d6e7f8091a2b3c4d5e", height: 974_120, timestamp: NOW / 1000 - 240, extras: { totalFees: 2_000_000 } },
     { height: 974_119, timestamp: NOW / 1000 - 900, extras: { totalFees: 3_000_000 } },
   ],
   "/v1/mining/hashrate/3d": { currentHashrate: 1.2e21, currentDifficulty: 1.6e14 },
@@ -44,7 +44,7 @@ describe("datos de la red Bitcoin", () => {
     });
     const n = await network.getNetworkStats();
     expect(urls.every((u) => u.startsWith("https://mempool.space/api/"))).toBe(true);
-    expect(n).toMatchObject({ source: "mempool", height: 974_120, lastBlockAt: NOW - 240_000, hashrateEh: 1200, difficulty: 1.6e14 });
+    expect(n).toMatchObject({ source: "mempool", height: 974_120, lastBlockAt: NOW - 240_000, lastBlockHash: "00000000000000000001a6f3c2be7d4598e0c1f2a3b4c5d6e7f8091a2b3c4d5e", hashrateEh: 1200, difficulty: 1.6e14 });
     expect(n.adjustment).toEqual({ progressPct: 41.5, remainingBlocks: 1180, changePct: 2.75, etaMs: NOW + 8 * 86_400_000 });
     // Comisiones promedio de los últimos bloques: 0,025 BTC.
     expect(n.networkHashpriceSats).toBeCloseTo(37.8, 6);
@@ -74,6 +74,8 @@ describe("datos de la red Bitcoin", () => {
     });
     const n = await network.getNetworkStats();
     expect(n.source).toBe("referencia");
+    // Sin datos reales no se inventa un hash.
+    expect(n.lastBlockHash).toBeNull();
     expect(n.height).toBeGreaterThan(900_000);
     expect(n.adjustment.remainingBlocks).toBeGreaterThanOrEqual(1);
     expect(n.adjustment.remainingBlocks).toBeLessThanOrEqual(2016);

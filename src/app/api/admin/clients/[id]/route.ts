@@ -3,7 +3,7 @@ import { requireAdminApi } from "@/lib/admin/access";
 import { clientDetail } from "@/lib/admin/client-detail";
 import { handleError } from "@/lib/api";
 
-/** La ficha completa de un comercializador. */
+/** La ficha completa de un cliente. */
 export async function GET(_req: Request, ctx: RouteContext<"/api/admin/clients/[id]">) {
   try {
     await connection();

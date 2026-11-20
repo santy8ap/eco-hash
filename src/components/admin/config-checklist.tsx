@@ -33,7 +33,7 @@ function CheckMark({ state }: { state: ConfigCheck["state"] }) {
   }
   if (state === "falta") {
     return (
-      <span className={`${base} bg-ink text-void`}>
+      <span className={`${base} bg-amber text-amber-ink`}>
         <X size={13} strokeWidth={2.6} aria-hidden="true" />
         <span className="sr-only">{STATE_TEXT.falta}</span>
       </span>
@@ -41,7 +41,7 @@ function CheckMark({ state }: { state: ConfigCheck["state"] }) {
   }
   if (state === "aviso") {
     return (
-      <span className={`${base} border border-ink text-ink`}>
+      <span className={`${base} border border-amber text-ink`}>
         <AlertTriangle size={12} strokeWidth={2} aria-hidden="true" />
         <span className="sr-only">{STATE_TEXT.aviso}</span>
       </span>
@@ -92,7 +92,7 @@ function ResetDialog({ open, onClose }: { open: boolean; onClose(): void }) {
       <p className="leading-relaxed text-fog">
         Se borran la cuenta de pruebas y todos los planes y movimientos de la
         etapa de pruebas. Las cuentas reales y los datos de los
-        comercializadores se conservan, pero quedan sin planes. No se puede
+        clientes se conservan, pero quedan sin planes. No se puede
         deshacer.
       </p>
       <form onSubmit={submit} className="mt-7 space-y-6">

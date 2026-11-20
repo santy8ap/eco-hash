@@ -10,6 +10,8 @@ export interface NetworkStats {
   height: number;
   /** Cuándo se minó el último bloque (ms UTC); null con valores de referencia */
   lastBlockAt: number | null;
+  /** Hash del último bloque (empieza con ceros: la prueba de trabajo); null con valores de referencia */
+  lastBlockHash: string | null;
   /** Hashrate de la red (EH/s) */
   hashrateEh: number;
   difficulty: number;
@@ -52,6 +54,7 @@ function referenceStats(now: number): NetworkStats {
   return {
     height,
     lastBlockAt: null,
+    lastBlockHash: null,
     hashrateEh: REF.hashrateHs / 1e18,
     difficulty: (REF.hashrateHs * BLOCK_MS) / 1000 / 2 ** 32,
     adjustment: { progressPct: (inPeriod / RETARGET_BLOCKS) * 100, remainingBlocks, changePct: 0, etaMs: now + remainingBlocks * BLOCK_MS },
@@ -72,6 +75,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 interface MempoolBlock {
+  id?: string;
   height: number;
   timestamp: number;
   extras?: { totalFees?: number };
@@ -90,6 +94,7 @@ async function fetchStats(now: number): Promise<NetworkStats> {
   return {
     height: tip.height,
     lastBlockAt: tip.timestamp * 1000,
+    lastBlockHash: typeof tip.id === "string" && /^[0-9a-f]{64}$/.test(tip.id) ? tip.id : null,
     hashrateEh: hashrate.currentHashrate / 1e18,
     difficulty: hashrate.currentDifficulty,
     adjustment: {
