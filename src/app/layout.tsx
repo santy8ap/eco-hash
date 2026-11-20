@@ -61,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${archivo.variable} ${plexMono.variable} h-full`}
     >
       <head>
-        <script id="xge-theme" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script id="ech-theme" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="min-h-full">
         <ThemeProvider>{children}</ThemeProvider>

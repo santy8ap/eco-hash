@@ -7,7 +7,7 @@ export const THEMES = {
 export type ThemeMode = keyof typeof THEMES;
 
 export const DEFAULT_THEME: ThemeMode = "dark";
-export const THEME_STORAGE_KEY = "xge:theme";
+export const THEME_STORAGE_KEY = "ech:theme";
 export const THEME_MODES = Object.keys(THEMES) as ThemeMode[];
 
 export function readTheme(value: string | null | undefined): ThemeMode {

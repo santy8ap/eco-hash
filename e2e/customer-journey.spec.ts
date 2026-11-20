@@ -18,7 +18,7 @@ test("los enlaces antiguos, la ayuda y las rutas privadas responden correctament
   for (const url of [
     "/api/transactions",
     "/api/transactions/export",
-    "/api/receipts/IWE-12345678",
+    "/api/receipts/ECH-12345678",
   ]) {
     expect((await request.get(url)).status()).toBe(401);
   }
@@ -85,7 +85,7 @@ test("el resultado muestra el comprobante solo cuando se confirma el pago", asyn
   await page.getByRole("button", { name: /Entrar con la cuenta de pruebas/i }).click();
   await expect(page).toHaveURL(/\/panel$/);
 
-  const ref = "XGE-12345678";
+  const ref = "ECH-12345678";
   let confirmed = false;
   await page.route("**/api/payments/mercadopago/sync", (route) =>
     route.fulfill({
@@ -128,7 +128,7 @@ test("plan → ingreso → datos personales → resumen → pago de prueba → P
   try {
     // Solo el perfil ficticio de esta base temporal: cada viewport recorre el formulario completo.
     await db.execute(
-      "DELETE FROM company_profile WHERE user_id IN (SELECT id FROM user WHERE email = 'pruebas@xgreenenergy.local')",
+      "DELETE FROM company_profile WHERE user_id IN (SELECT id FROM user WHERE email = 'pruebas@eco-hash.local')",
     );
   } finally {
     db.close();

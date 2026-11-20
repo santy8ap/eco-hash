@@ -1,4 +1,4 @@
-# X green Energy
+# eco-hash
 
 Plataforma de planes de energía para comercializadores. El front usa el sistema monocromático Eclipse y el mensaje **«Bienvenido al mundo de la energía»**. Conserva el reloj solar de 6 a. m. a 7 p. m., con máximo de 8.000 kW.
 
@@ -14,7 +14,7 @@ npm run setup
 npm run dev
 ```
 
-Abre <http://localhost:3000>. `setup` crea `.env.local` si falta y genera las claves locales. La base local se crea en `data/iwe.db`; no se inventan planes, clientes ni movimientos. La cuenta de pruebas se crea al usar ese ingreso con `DEMO_MODE=true`.
+Abre <http://localhost:3000>. `setup` crea `.env.local` si falta y genera las claves locales. La base local se crea en `data/eco-hash.db`; no se inventan planes, clientes ni movimientos. La cuenta de pruebas se crea al usar ese ingreso con `DEMO_MODE=true`.
 
 ```bash
 npm run lint
@@ -110,7 +110,7 @@ Publicar el código no activa cobros reales. Faltan los datos y la revisión del
 
 ## Correos a los comercializadores
 
-Con `CUSTOMER_EMAIL_FROM` (un remitente de un dominio verificado en Resend, por ejemplo `X green Energy <avisos@tudominio.co>`) y la misma `RESEND_API_KEY`, cada comercializador recibe por correo:
+Con `CUSTOMER_EMAIL_FROM` (un remitente de un dominio verificado en Resend, por ejemplo `eco-hash <avisos@tudominio.co>`) y la misma `RESEND_API_KEY`, cada comercializador recibe por correo:
 
 - pago confirmado (con los días que genera ese mes), pago por devolver y devolución registrada;
 - transferencia no confirmada, con el motivo y el enlace para pagar ese mes;
@@ -150,6 +150,6 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright inicia un servidor en `127.0.0.1:4173` y una base nueva bajo el directorio temporal. Deshabilita las pasarelas externas y utiliza únicamente la cuenta y el pago de pruebas. Recorre escritorio y móvil, incluidos el formulario personal, resumen, confirmación, PDF, CSV, avisos, enlaces antiguos y acceso privado. No reutiliza `data/iwe.db`, Turso ni el sitio publicado. GitHub Actions ejecuta lint, pruebas unitarias, compilación y estos recorridos; conserva trazas de fallos durante siete días.
+Playwright inicia un servidor en `127.0.0.1:4173` y una base nueva bajo el directorio temporal. Deshabilita las pasarelas externas y utiliza únicamente la cuenta y el pago de pruebas. Recorre escritorio y móvil, incluidos el formulario personal, resumen, confirmación, PDF, CSV, avisos, enlaces antiguos y acceso privado. No reutiliza `data/eco-hash.db`, Turso ni el sitio publicado. GitHub Actions ejecuta lint, pruebas unitarias, compilación y estos recorridos; conserva trazas de fallos durante siete días.
 
 Los documentos de `docs/superpowers/` describen decisiones históricas; este README explica el funcionamiento actual.

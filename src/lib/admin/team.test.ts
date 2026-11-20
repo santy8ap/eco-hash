@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-equipo-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-equipo-")), "test.db")}`;
 const SECRET = "secreto-de-prueba-suficientemente-largo-123";
 vi.stubEnv("BETTER_AUTH_SECRET", SECRET);
 const OWNERS = " Dueno@Empresa.co , socia@empresa.co";
@@ -31,7 +31,7 @@ async function signIn(userId: string) {
   const token = `tok-${userId}-${Math.random().toString(36).slice(2)}`;
   const now = Date.now();
   await dbMod.db.insert(schema.session).values({ id: `ses-${token}`, token, userId, expiresAt: new Date(now + 86_400_000), createdAt: new Date(now), updatedAt: new Date(now) });
-  cookie = `iwe.session_token=${encodeURIComponent(`${token}.${createHmac("sha256", SECRET).update(token).digest("base64")}`)}`;
+  cookie = `ech.session_token=${encodeURIComponent(`${token}.${createHmac("sha256", SECRET).update(token).digest("base64")}`)}`;
 }
 
 async function status(check: () => Promise<unknown>) {
@@ -97,7 +97,7 @@ describe("quién administra (sin PIN)", () => {
   it("reglas del equipo: correo válido, sin repetir, sin propietarios ni la cuenta de pruebas, y los propietarios no se quitan desde aquí", async () => {
     await expect(team.addAdmin(owner, { email: "no es un correo" })).rejects.toMatchObject({ status: 400 });
     await expect(team.addAdmin(owner, { email: "socia@empresa.co" })).rejects.toMatchObject({ status: 409 });
-    await expect(team.addAdmin(owner, { email: "pruebas@xgreenenergy.local" })).rejects.toMatchObject({ status: 400 });
+    await expect(team.addAdmin(owner, { email: "pruebas@eco-hash.local" })).rejects.toMatchObject({ status: 400 });
     await expect(team.addAdmin(owner, { email: "nuevo@empresa.co", note: "<b>jefe</b>" })).rejects.toThrow(/< ni >/);
     await team.addAdmin(owner, { email: "operaciones@empresa.co" });
     await expect(team.addAdmin(owner, { email: "OPERACIONES@empresa.co" })).rejects.toMatchObject({ status: 409 });
@@ -106,11 +106,11 @@ describe("quién administra (sin PIN)", () => {
   });
 
   it("la cuenta de pruebas solo administra como propietaria y solo en modo de pruebas", async () => {
-    vi.stubEnv("ADMIN_EMAILS", `${OWNERS}, pruebas@xgreenenergy.local`);
-    expect(await team.adminRoleOf("pruebas@xgreenenergy.local")).toBe("propietario");
+    vi.stubEnv("ADMIN_EMAILS", `${OWNERS}, pruebas@eco-hash.local`);
+    expect(await team.adminRoleOf("pruebas@eco-hash.local")).toBe("propietario");
     vi.stubEnv("DEMO_MODE", "false");
-    expect(await team.adminRoleOf("pruebas@xgreenenergy.local")).toBeNull();
-    expect(team.ownerEmails()).not.toContain("pruebas@xgreenenergy.local");
+    expect(await team.adminRoleOf("pruebas@eco-hash.local")).toBeNull();
+    expect(team.ownerEmails()).not.toContain("pruebas@eco-hash.local");
   });
 
   it("el equipo: primero los propietarios, con su nombre y su último ingreso, y luego quienes agregaron, con quién les dio acceso", async () => {

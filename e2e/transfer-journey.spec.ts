@@ -59,7 +59,7 @@ test("transferencia: el admin publica la cuenta, el comercializador reporta el p
   await settings.getByLabel("Tipo de cuenta").selectOption("corriente");
   await settings.getByLabel("Número de cuenta").fill("123-456789-01");
   await settings.getByLabel("NIT o documento del titular").fill("901234567-1");
-  await settings.getByLabel("Titular de la cuenta").fill("X green Energy S.A.S.");
+  await settings.getByLabel("Titular de la cuenta").fill("eco-hash S.A.S.");
   await settings.getByRole("button", { name: /Guardar la cuenta/i }).click();
   await expect(page.getByText("Cuenta para transferencias guardada.")).toBeVisible();
   await expect(settings.getByLabel("Número de cuenta")).toHaveValue("12345678901");

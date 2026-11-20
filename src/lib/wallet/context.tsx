@@ -6,7 +6,7 @@ import { postJson } from "@/lib/client/use-json";
 import { startDiscovery } from "./discovery";
 import { CHAINS, type DiscoveredWallet, type Eip1193Provider, type WalletKind, type WalletState } from "./types";
 
-const LAST = "iwe:wallet-ultima";
+const LAST = "ech:wallet-ultima";
 export const WC_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? "";
 
 interface WalletApi extends WalletState {

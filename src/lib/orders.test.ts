@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createUser } from "../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-atomic-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-atomic-")), "test.db")}`;
 
 let orders: typeof import("@/lib/orders");
 let plans: typeof import("@/lib/plans/service");
@@ -27,7 +27,7 @@ async function pending() {
   const userId = `atomic-${++sequence}`;
   await createUser(userId);
   const p = await plans.resolvePlanPayment(userId, { planId: "h100" });
-  const id = `IWE-ATOMIC-${sequence}`;
+  const id = `ECH-ATOMIC-${sequence}`;
   await database.db.insert(schema.ledgerTx).values({
     id,
     userId,

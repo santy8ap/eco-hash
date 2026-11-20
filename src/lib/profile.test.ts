@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createUser } from "../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-profile-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-profile-")), "test.db")}`;
 
 let profile: typeof import("@/lib/profile");
 let dbMod: typeof import("@/lib/db");
@@ -91,7 +91,7 @@ describe("cambio de titular (nombre o documento) en una cuenta que ya movió din
       .where(and(eq(schema.adminAudit.action, "cambio_titular"), eq(schema.adminAudit.targetUserId, userId)));
   };
   const paid = (userId: string) =>
-    dbMod.db.insert(schema.ledgerTx).values({ id: `XGE-PAGO-${userId}`, userId, kind: "plan_mes", status: "confirmada", amountCop: 20_880_000, method: "manual", createdAt: Date.now(), confirmedAt: Date.now() });
+    dbMod.db.insert(schema.ledgerTx).values({ id: `ECH-PAGO-${userId}`, userId, kind: "plan_mes", status: "confirmada", amountCop: 20_880_000, method: "manual", createdAt: Date.now(), confirmedAt: Date.now() });
 
   it("antes del primer pago, corregir el nombre o el documento no deja constancia", async () => {
     await createUser("tit-1", { profile: false });

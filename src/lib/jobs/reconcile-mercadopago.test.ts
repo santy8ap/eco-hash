@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-mpjobs-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-mpjobs-")), "test.db")}`;
 vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", "APP_USR-token-de-prueba");
 
 let jobs: typeof import("./reconcile-mercadopago");
@@ -40,16 +40,16 @@ beforeAll(async () => {
   schema = await import("@/lib/db/schema");
   await createUser("mp-owner");
   await database.db.insert(schema.ledgerTx).values([
-    order("IWE-MP-PEND-1", "pendiente", 0.01),
-    order("IWE-MP-PEND-2", "verificando", 1),
-    order("IWE-MP-PEND-OLD", "pendiente", 5),
+    order("ECH-MP-PEND-1", "pendiente", 0.01),
+    order("ECH-MP-PEND-2", "verificando", 1),
+    order("ECH-MP-PEND-OLD", "pendiente", 5),
     // PSE en proceso desde hace 10 días: Mercado Pago ya tiene el pago, así que se sigue consultando.
-    order("IWE-MP-PROC-10D", "pendiente", 10, "mercadopago", true),
-    order("IWE-MP-PROC-40D", "pendiente", 40, "mercadopago", true),
-    order("IWE-MP-OK-RECENT", "confirmada", 20),
-    order("IWE-MP-OK-OLD", "confirmada", 200),
-    order("IWE-MP-FAILED", "fallida", 1),
-    order("IWE-CRYPTO-PEND", "pendiente", 0.01, "crypto"),
+    order("ECH-MP-PROC-10D", "pendiente", 10, "mercadopago", true),
+    order("ECH-MP-PROC-40D", "pendiente", 40, "mercadopago", true),
+    order("ECH-MP-OK-RECENT", "confirmada", 20),
+    order("ECH-MP-OK-OLD", "confirmada", 200),
+    order("ECH-MP-FAILED", "fallida", 1),
+    order("ECH-CRYPTO-PEND", "pendiente", 0.01, "crypto"),
   ]);
 }, 120_000);
 
@@ -61,11 +61,11 @@ describe("conciliación de Mercado Pago (avisos perdidos)", () => {
       clock: () => NOW,
       sync: async ({ orderId }) => {
         seen.push(orderId);
-        if (orderId === "IWE-MP-PEND-1") throw new Error("Mercado Pago no respondió");
+        if (orderId === "ECH-MP-PEND-1") throw new Error("Mercado Pago no respondió");
         return null;
       },
     });
-    expect(seen.sort()).toEqual(["IWE-MP-PEND-1", "IWE-MP-PEND-2", "IWE-MP-PROC-10D"]);
+    expect(seen.sort()).toEqual(["ECH-MP-PEND-1", "ECH-MP-PEND-2", "ECH-MP-PROC-10D"]);
     expect(r).toMatchObject({ pending: 3, confirmed: 0, failed: 1 });
   });
 
@@ -79,12 +79,12 @@ describe("conciliación de Mercado Pago (avisos perdidos)", () => {
         return null;
       },
     });
-    expect(seen.sort()).toEqual(["IWE-MP-OK-RECENT", "IWE-MP-PEND-1", "IWE-MP-PEND-2", "IWE-MP-PROC-10D"]);
+    expect(seen.sort()).toEqual(["ECH-MP-OK-RECENT", "ECH-MP-PEND-1", "ECH-MP-PEND-2", "ECH-MP-PROC-10D"]);
     expect(r).toMatchObject({ pending: 3, confirmed: 1, failed: 0 });
   });
 
   it("con más órdenes abiertas de las que caben en una pasada, las revisa todas por turnos (no siempre las mismas)", async () => {
-    const extra = Array.from({ length: 14 }, (_, i) => order(`IWE-MP-ROT-${String(i + 1).padStart(2, "0")}`, "pendiente", 0.5));
+    const extra = Array.from({ length: 14 }, (_, i) => order(`ECH-MP-ROT-${String(i + 1).padStart(2, "0")}`, "pendiente", 0.5));
     await database.db.insert(schema.ledgerTx).values(extra);
     const pass = async () => {
       const seen: string[] = [];
@@ -100,12 +100,12 @@ describe("conciliación de Mercado Pago (avisos perdidos)", () => {
   });
 
   it("con más de 50 pagos confirmados, las devoluciones se buscan en todos por turnos", async () => {
-    const extra = Array.from({ length: 60 }, (_, i) => order(`IWE-MP-CONF-${String(i + 1).padStart(2, "0")}`, "confirmada", 3));
+    const extra = Array.from({ length: 60 }, (_, i) => order(`ECH-MP-CONF-${String(i + 1).padStart(2, "0")}`, "confirmada", 3));
     await database.db.insert(schema.ledgerTx).values(extra);
     const pass = async () => {
       const seen: string[] = [];
       await jobs.reconcileMercadoPago({ mode: "completo", clock: () => NOW, sync: async ({ orderId }) => void seen.push(orderId) });
-      return seen.filter((id) => id.startsWith("IWE-MP-CONF-") || id === "IWE-MP-OK-RECENT");
+      return seen.filter((id) => id.startsWith("ECH-MP-CONF-") || id === "ECH-MP-OK-RECENT");
     };
     const first = await pass();
     const second = await pass();

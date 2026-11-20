@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-golive-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-golive-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let status: typeof import("@/lib/admin/config-status");
@@ -97,7 +97,7 @@ describe("lista de configuración", () => {
   });
 
   it("los textos legales aprobados pero con los datos de la empresa sin completar todavía bloquean", () => {
-    const filled = { reviewed: true, version: "2026-11-12", nit: "901234567-1", address: "Calle 10 # 43-12, oficina 501", city: "Medellín", email: "datos@xgreen.co", phone: "604 444 5566" };
+    const filled = { reviewed: true, version: "2026-11-12", nit: "901234567-1", address: "Calle 10 # 43-12, oficina 501", city: "Medellín", email: "datos@eco-hash.co", phone: "604 444 5566" };
     expect(status.legalCheck(filled)).toEqual({ state: "ok", detail: "Versión 2026-11-12." });
     expect(status.legalCheck({ ...filled, reviewed: false }).state).toBe("falta");
     const missing = status.legalCheck({ ...filled, nit: "[NIT de la empresa]", phone: " " });
@@ -113,7 +113,7 @@ describe("lista de configuración", () => {
   });
 
   it("reconoce las credenciales de prueba nuevas (APP_USR- de una cuenta de prueba): aviso en pruebas, bloqueo con dinero real", async () => {
-    delete (globalThis as { __iweMpAccount?: unknown }).__iweMpAccount;
+    delete (globalThis as { __echMpAccount?: unknown }).__echMpAccount;
     vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", "APP_USR-cuenta-de-prueba");
     vi.stubGlobal(
       "fetch",
@@ -135,7 +135,7 @@ describe("lista de configuración", () => {
       expect((await byId())["mp-token"].state).toBe("falta");
     } finally {
       vi.unstubAllGlobals();
-      delete (globalThis as { __iweMpAccount?: unknown }).__iweMpAccount;
+      delete (globalThis as { __echMpAccount?: unknown }).__echMpAccount;
     }
   });
 
@@ -186,7 +186,7 @@ describe("borrar los datos de prueba", () => {
     await db
       .insert(schema.ledgerTx)
       .values({
-        id: "IWE-REAL000001",
+        id: "ECH-REAL000001",
         userId: "real-1",
         kind: "plan_mes",
         status: "confirmada",
@@ -200,7 +200,7 @@ describe("borrar los datos de prueba", () => {
     });
     await db
       .delete(schema.ledgerTx)
-      .where(drizzle.eq(schema.ledgerTx.id, "IWE-REAL000001"));
+      .where(drizzle.eq(schema.ledgerTx.id, "ECH-REAL000001"));
   });
 
   it("borra la cuenta de pruebas, los planes y los movimientos, y conserva las cuentas reales con los datos de su empresa", async () => {
@@ -211,7 +211,7 @@ describe("borrar los datos de prueba", () => {
       .values({
         id: "demo-1",
         name: "Empresa de Pruebas",
-        email: "pruebas@xgreenenergy.local",
+        email: "pruebas@eco-hash.local",
         emailVerified: true,
         createdAt: now,
         updatedAt: now,

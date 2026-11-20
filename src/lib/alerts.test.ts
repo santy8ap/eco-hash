@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { formatCop } from "@/lib/format";
 import { createUser } from "../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-alerts-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-alerts-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let alerts: typeof import("@/lib/alerts");
@@ -36,7 +36,7 @@ function fakeResend(reply: (to: string) => Response = () => new Response(JSON.st
 
 function configure(env: Record<string, string> = {}) {
   vi.stubEnv("RESEND_API_KEY", "re_clave_de_prueba");
-  vi.stubEnv("ADMIN_EMAILS", "admin@empresa.co, pruebas@xgreenenergy.local");
+  vi.stubEnv("ADMIN_EMAILS", "admin@empresa.co, pruebas@eco-hash.local");
   for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
 }
 
@@ -49,18 +49,18 @@ describe("a quién y desde dónde se envían", () => {
 
   it("va a los administradores, sin la cuenta de pruebas, desde el remitente de pruebas de Resend", () => {
     configure();
-    expect(alerts.alertConfig()).toEqual({ enabled: true, to: ["admin@empresa.co"], from: "X green Energy <onboarding@resend.dev>" });
+    expect(alerts.alertConfig()).toEqual({ enabled: true, to: ["admin@empresa.co"], from: "eco-hash <onboarding@resend.dev>" });
   });
 
   it("ALERT_EMAIL manda sobre ADMIN_EMAILS; se descartan los correos inválidos y hay un máximo de 5", () => {
-    configure({ ALERT_EMAIL: "Dueno@Empresa.co, no-es-correo, a@b.co, c@d.co, e@f.co, g@h.co, i@j.co", ALERT_FROM: "Alertas <alertas@xgreen.co>" });
+    configure({ ALERT_EMAIL: "Dueno@Empresa.co, no-es-correo, a@b.co, c@d.co, e@f.co, g@h.co, i@j.co", ALERT_FROM: "Alertas <alertas@eco-hash.co>" });
     const cfg = alerts.alertConfig();
     expect(cfg.to).toEqual(["dueno@empresa.co", "a@b.co", "c@d.co", "e@f.co", "g@h.co"]);
-    expect(cfg.from).toBe("Alertas <alertas@xgreen.co>");
+    expect(cfg.from).toBe("Alertas <alertas@eco-hash.co>");
   });
 
   it("sin destinatarios válidos queda apagada aunque haya clave", () => {
-    configure({ ADMIN_EMAILS: "pruebas@xgreenenergy.local" });
+    configure({ ADMIN_EMAILS: "pruebas@eco-hash.local" });
     expect(alerts.alertConfig().enabled).toBe(false);
   });
 });
@@ -69,13 +69,13 @@ describe("el contenido del correo", () => {
   it("escapa lo que escriben los usuarios y enlaza al admin", () => {
     const r = alerts.renderAlert(
       { kind: "retiro", subject: "Retiro\r\npor aprobar", lines: ['<script>alert("x")</script> pidió un retiro'], path: "/admin/retiros" },
-      { demo: false, url: "https://solaxy-mvp.vercel.app" },
+      { demo: false, url: "https://eco-hash.vercel.app" },
     );
     expect(r.subject).toBe("Retiro por aprobar");
     expect(r.html).not.toContain("<script>");
     expect(r.html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
-    expect(r.html).toContain('href="https://solaxy-mvp.vercel.app/admin/retiros"');
-    expect(r.text).toContain("https://solaxy-mvp.vercel.app/admin/retiros");
+    expect(r.html).toContain('href="https://eco-hash.vercel.app/admin/retiros"');
+    expect(r.text).toContain("https://eco-hash.vercel.app/admin/retiros");
   });
 
   it("en modo de pruebas lo dice en el asunto y al final", () => {
@@ -86,7 +86,7 @@ describe("el contenido del correo", () => {
 
   it("la transferencia trae la referencia y el comprobante que hay que buscar en el banco", () => {
     const a = alerts.alertMessages.transferReported(
-      { id: "IWE-1", userId: "a1", amountCop: 59_400_000, method: "transferencia", periodIndex: 2, subscriptionId: "PLN-1A2B3C4D", txHash: "COMP-55" },
+      { id: "ECH-1", userId: "a1", amountCop: 59_400_000, method: "transferencia", periodIndex: 2, subscriptionId: "PLN-1A2B3C4D", txHash: "COMP-55" },
       "Energía Andina S.A.S.",
     );
     expect(a.subject).toBe(`Transferencia por confirmar: ${formatCop(59_400_000)}`);
@@ -127,7 +127,7 @@ describe("el envío con Resend", () => {
     ]);
     expect(sent).toHaveLength(2);
     expect(sent[0]).toMatchObject({ url: "https://api.resend.com/emails", auth: "Bearer re_clave_de_prueba" });
-    expect(sent[0].body).toMatchObject({ from: "X green Energy <onboarding@resend.dev>", to: ["uno@empresa.co"] });
+    expect(sent[0].body).toMatchObject({ from: "eco-hash <onboarding@resend.dev>", to: ["uno@empresa.co"] });
     expect(sent[0].body.subject).toMatch(/Prueba de las alertas/);
     expect(sent[0].body.text).toMatch(/las alertas por correo funcionan/);
     expect(sent[0].body.html).toMatch(/<p/);
@@ -160,7 +160,7 @@ describe("cuándo se envían", () => {
   it("un pago de Mercado Pago avisa con el nombre de la empresa; los que confirma el admin, no", async () => {
     configure();
     const { sent } = fakeResend();
-    const base = { id: "IWE-2", userId: "a1", amountCop: 20_880_000, periodIndex: 1, subscriptionId: "PLN-00000001" };
+    const base = { id: "ECH-2", userId: "a1", amountCop: 20_880_000, periodIndex: 1, subscriptionId: "PLN-00000001" };
     alerts.alertPaymentConfirmed({ ...base, method: "transferencia" });
     alerts.alertPaymentConfirmed({ ...base, method: "manual" });
     alerts.alertPaymentConfirmed({ ...base, method: "demo" });

@@ -131,7 +131,7 @@ export async function deliverAlert(alert: Alert, deps: { fetch?: typeof fetch; c
   return results;
 }
 
-const g = globalThis as unknown as { __iweAlertTasks?: Set<Promise<void>>; __iweAlertSeen?: Map<string, number> };
+const g = globalThis as unknown as { __echAlertTasks?: Set<Promise<void>>; __echAlertSeen?: Map<string, number> };
 
 /**
  * Programa una alerta para después de responder. `build` arma el mensaje (puede consultar la base)
@@ -152,7 +152,7 @@ export function alertAdmin(build: () => Alert | null | Promise<Alert | null>) {
   } catch {
     // Fuera de una petición (pruebas o scripts): se envía de una vez.
     const p = task();
-    const tasks = (g.__iweAlertTasks ??= new Set());
+    const tasks = (g.__echAlertTasks ??= new Set());
     tasks.add(p);
     void p.finally(() => tasks.delete(p));
   }
@@ -160,7 +160,7 @@ export function alertAdmin(build: () => Alert | null | Promise<Alert | null>) {
 
 /** Para las pruebas: espera las alertas que se enviaron fuera de una petición. */
 export async function flushAlerts() {
-  await Promise.all([...(g.__iweAlertTasks ?? [])]);
+  await Promise.all([...(g.__echAlertTasks ?? [])]);
 }
 
 /* ───────────── Mensajes ───────────── */
@@ -330,7 +330,7 @@ const failureCap = createDbRateLimiter({ name: "alerta-fallas", max: 6, windowMs
 export function alertFailure(key: string, title: string, detail: string) {
   if (!alertConfig().enabled) return;
   // Primero en memoria (esta instancia), luego en la base (todas las instancias).
-  const seen = (g.__iweAlertSeen ??= new Map());
+  const seen = (g.__echAlertSeen ??= new Map());
   const now = Date.now();
   if (now - (seen.get(key) ?? 0) < FAILURE_WINDOW_MS) return;
   seen.set(key, now);

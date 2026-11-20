@@ -17,7 +17,7 @@ export const TX_STATUS_LABEL: Record<string, string> = {
 
 export const txStatusLabel = (status: string) => TX_STATUS_LABEL[status] ?? status;
 
-/** Para el comercializador, un pago que el admin registró a mano también fue una transferencia bancaria. */
+/** Para el cliente, un pago que el admin registró a mano también fue una transferencia bancaria. */
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   mercadopago: "Mercado Pago",
   crypto: "Cripto",
@@ -28,5 +28,5 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
 
 export const paymentMethodLabel = (method: string | null | undefined) => (method ? (PAYMENT_METHOD_LABEL[method] ?? method) : "");
 
-/** En el admin se distingue el pago registrado a mano de la transferencia que reporta el comercializador. */
+/** En el admin se distingue el pago registrado a mano de la transferencia que reporta el cliente. */
 export const adminMethodLabel = (method: string | null | undefined) => (method === "manual" ? "Registrado a mano" : paymentMethodLabel(method));

@@ -16,7 +16,7 @@ describe("sesión cerrada al enviar una acción", () => {
   it("con 401 lleva a ingresar y luego de vuelta a la misma página", async () => {
     const replace = browserAt("/admin/pagos", "?estado=en_proceso");
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "Inicia sesión para continuar" }, { status: 401 })));
-    await expect(postJson("/api/admin/payments/XGE-1", { action: "confirmar" })).rejects.toThrow(SESSION_CLOSED);
+    await expect(postJson("/api/admin/payments/ECH-1", { action: "confirmar" })).rejects.toThrow(SESSION_CLOSED);
     expect(replace).toHaveBeenCalledWith(`/ingresar?${new URLSearchParams({ rol: "admin", next: "/admin/pagos?estado=en_proceso" })}`);
   });
 

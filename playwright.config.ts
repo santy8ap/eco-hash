@@ -4,7 +4,7 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // Heredado por los workers y el servidor; cada ejecución usa una base temporal distinta.
-process.env.E2E_DATABASE_URL ??= `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-e2e-")), "test.db")}`;
+process.env.E2E_DATABASE_URL ??= `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-e2e-")), "test.db")}`;
 
 export default defineConfig({
   testDir: "./e2e",

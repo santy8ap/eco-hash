@@ -1,5 +1,5 @@
 import type { PortfolioDTO } from "@/lib/portfolio";
-import { formatCop, formatDate } from "@/lib/format";
+import { formatCop, formatDate, formatSats } from "@/lib/format";
 import { planCheckoutHref, renewalCheckoutHref } from "@/lib/navigation";
 import { DAY_MS } from "@/lib/time";
 
@@ -24,7 +24,7 @@ export function accountNotices(
       notices.push({
         id: `revision:${sub.id}`,
         title: "Tu cuenta necesita conciliación",
-        detail: `${sub.planName}: el proveedor reportó una devolución. Revisa el movimiento con soporte; los retiros quedan en revisión.`,
+        detail: `Plan ${sub.planName}: el proveedor reportó una devolución. Revisa el movimiento con soporte; los retiros quedan en revisión.`,
         at: data.asOf,
         href: "/ayuda",
         action: "Consultar ayuda",
@@ -40,7 +40,7 @@ export function accountNotices(
       notices.push({
         id: `renovar:${sub.id}`,
         title: `Tu ${sub.planName} termina pronto`,
-        detail: `Termina el ${formatDate(sub.paidUntil)}. Renuévalo para seguir generando energía; el plan nuevo empieza cuando se confirme su primer pago.`,
+        detail: `Termina el ${formatDate(sub.paidUntil)}. Renuévalo para seguir minando; el plan nuevo empieza cuando se confirme su primer pago.`,
         at: sub.paidUntil - 7 * DAY_MS,
         href: planCheckoutHref(sub.planId),
         action: "Renovar",
@@ -51,7 +51,7 @@ export function accountNotices(
       notices.push({
         id: `terminado:${sub.id}`,
         title: `Tu ${sub.planName} terminó`,
-        detail: `Terminó el ${formatDate(sub.paidUntil)}, con sus ${sub.months} meses. Renuévalo para seguir generando energía con los precios vigentes.`,
+        detail: `Terminó el ${formatDate(sub.paidUntil)}, con sus ${sub.months} meses. Renuévalo para seguir minando con los precios vigentes.`,
         at: sub.paidUntil,
         href: planCheckoutHref(sub.planId),
         action: "Renovar",
@@ -70,7 +70,7 @@ export function accountNotices(
         sub.state === "en_pausa"
           ? "Tu plan está en pausa"
           : "Se acerca tu próxima mensualidad",
-      detail: `${sub.planName}: mes ${sub.paidMonths + 1}, ${formatCop(sub.monthlyCop)}. ${sub.state === "en_pausa" ? `Puedes retomarlo hasta el ${formatDate(sub.graceEndsAt ?? sub.paidUntil)}.` : `Paga antes del ${formatDate(sub.paidUntil)} para continuar generando.`}`,
+      detail: `Plan ${sub.planName}: mes ${sub.paidMonths + 1}, ${formatCop(sub.monthlyCop)}. ${sub.state === "en_pausa" ? `Puedes retomarlo hasta el ${formatDate(sub.graceEndsAt ?? sub.paidUntil)}.` : `Paga antes del ${formatDate(sub.paidUntil)} para seguir minando sin pausa.`}`,
       at: sub.paidUntil - 5 * DAY_MS,
       href: renewalCheckoutHref(sub.id),
       action: "Revisar mensualidad",
@@ -84,13 +84,13 @@ export function accountNotices(
     ) {
       const titles: Record<string, string> = {
         por_aprobar: "Estamos revisando tu retiro",
-        confirmada: "Retiro pagado",
+        confirmada: "Retiro enviado",
         rechazada: "Tu retiro necesita atención",
       };
       notices.push({
         id: `mov:${tx.id}:${tx.status}`,
         title: titles[tx.status],
-        detail: `${formatCop(tx.amountCop)}. ${tx.note ?? (tx.status === "por_aprobar" ? "El importe está reservado mientras el equipo revisa la solicitud." : "Consulta el detalle en tus movimientos.")}`,
+        detail: `${formatSats(tx.amountSats ?? 0)}. ${tx.note ?? (tx.status === "por_aprobar" ? "Los sats quedan apartados mientras el equipo revisa la solicitud." : tx.status === "confirmada" && tx.txHash ? `Txid: ${tx.txHash.slice(0, 12)}…` : "Consulta el detalle en tus movimientos.")}`,
         at: tx.confirmedAt ?? tx.createdAt,
         href: "/panel/billetera",
         action: "Ver retiro",
@@ -105,7 +105,7 @@ export function accountNotices(
         "por_reembolsar",
         "reembolsada",
       ].includes(tx.status) ||
-        // Una transferencia que el admin no encontró en el banco: la empresa debe saberlo para volver a pagar.
+        // Una transferencia que el admin no encontró en el banco: el cliente debe saberlo para volver a pagar.
         (tx.status === "fallida" && tx.method === "transferencia"))
     ) {
       const titles: Record<string, string> = {

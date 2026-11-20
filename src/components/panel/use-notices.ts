@@ -5,12 +5,12 @@ import { usePortfolio } from "./use-portfolio";
 import { useUser } from "./user-context";
 
 const memory = new Map<string, string>();
-const EVENT = "xge-notices-read";
+const EVENT = "ech-notices-read";
 
 export function useNotices() {
   const user = useUser();
   const { data, error, now } = usePortfolio();
-  const key = `xge:avisos:${user.id}:leidos`;
+  const key = `ech:avisos:${user.id}:leidos`;
   const subscribe = useCallback((callback: () => void) => {
     window.addEventListener(EVENT, callback);
     window.addEventListener("storage", callback);

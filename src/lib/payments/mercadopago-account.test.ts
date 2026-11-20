@@ -16,7 +16,7 @@ const REAL_USER = { id: 123, nickname: "SOLAXY", site_id: "MCO", tags: ["normal"
 
 beforeEach(async () => {
   vi.resetModules();
-  delete (globalThis as { __iweMpAccount?: unknown }).__iweMpAccount;
+  delete (globalThis as { __echMpAccount?: unknown }).__echMpAccount;
   vi.stubEnv("MERCADOPAGO_API_BASE", "https://mp.falso");
   acc = await import("@/lib/payments/mercadopago-account");
 });

@@ -31,7 +31,7 @@ describe("clave secreta", () => {
     const { authSecret } = await import("@/lib/env");
     const secret = authSecret();
     expect(secret.length).toBeGreaterThan(30);
-    expect(secret).not.toMatch(/iwe-pruebas-secreto/);
+    expect(secret).not.toMatch(/ech-pruebas-secreto/);
   });
 
   it("fuera del modo demo tampoco usa la clave de respaldo", async () => {
@@ -46,16 +46,16 @@ describe("clave secreta", () => {
     vi.stubEnv("VERCEL", "");
     vi.stubEnv("DEMO_MODE", "");
     vi.stubEnv("BETTER_AUTH_SECRET", "");
-    const g = globalThis as unknown as { __iweDevSecret?: string };
-    delete g.__iweDevSecret;
+    const g = globalThis as unknown as { __echDevSecret?: string };
+    delete g.__echDevSecret;
     const first = (await import("@/lib/env")).authSecret();
     expect(first.length).toBeGreaterThan(30);
-    expect(first).not.toMatch(/iwe-pruebas-secreto/);
+    expect(first).not.toMatch(/ech-pruebas-secreto/);
     // La misma en todo el proceso, aunque el módulo se cargue otra vez: si no, las sesiones no se podrían verificar.
     vi.resetModules();
     expect((await import("@/lib/env")).authSecret()).toBe(first);
     // Otro proceso tendría otra.
-    delete g.__iweDevSecret;
+    delete g.__echDevSecret;
     vi.resetModules();
     expect((await import("@/lib/env")).authSecret()).not.toBe(first);
   });
@@ -64,22 +64,22 @@ describe("clave secreta", () => {
 describe("propietarios de la administración", () => {
   it("con dinero real solo son propietarios los correos de ADMIN_EMAILS", async () => {
     vi.stubEnv("DEMO_MODE", "false");
-    vi.stubEnv("ADMIN_EMAILS", " Socio@InWorldEnergy.co ,ops@inworldenergy.co");
+    vi.stubEnv("ADMIN_EMAILS", " Socio@Eco-Hash.co ,ops@eco-hash.co");
     const { adminEmailAllowed } = await import("@/lib/env");
-    expect(adminEmailAllowed("socio@inworldenergy.co")).toBe(true);
-    expect(adminEmailAllowed("OPS@inworldenergy.co")).toBe(true);
+    expect(adminEmailAllowed("socio@eco-hash.co")).toBe(true);
+    expect(adminEmailAllowed("OPS@eco-hash.co")).toBe(true);
     expect(adminEmailAllowed("intruso@gmail.com")).toBe(false);
     vi.stubEnv("ADMIN_EMAILS", "");
-    expect(adminEmailAllowed("socio@inworldenergy.co")).toBe(false);
+    expect(adminEmailAllowed("socio@eco-hash.co")).toBe(false);
   });
 
   it("la cuenta de pruebas solo es propietaria si su correo está en ADMIN_EMAILS", async () => {
     vi.stubEnv("DEMO_MODE", "");
-    vi.stubEnv("ADMIN_EMAILS", "socio@inworldenergy.co");
+    vi.stubEnv("ADMIN_EMAILS", "socio@eco-hash.co");
     const { adminEmailAllowed } = await import("@/lib/env");
-    expect(adminEmailAllowed("pruebas@xgreenenergy.local")).toBe(false);
-    vi.stubEnv("ADMIN_EMAILS", "socio@inworldenergy.co, pruebas@xgreenenergy.local");
-    expect(adminEmailAllowed("Pruebas@XGreenEnergy.local")).toBe(true);
+    expect(adminEmailAllowed("pruebas@eco-hash.local")).toBe(false);
+    vi.stubEnv("ADMIN_EMAILS", "socio@eco-hash.co, pruebas@eco-hash.local");
+    expect(adminEmailAllowed("Pruebas@Eco-Hash.local")).toBe(true);
   });
 
   it("sin ADMIN_EMAILS no hay propietarios", async () => {
@@ -87,23 +87,23 @@ describe("propietarios de la administración", () => {
     vi.stubEnv("ADMIN_EMAILS", "");
     const { adminEmailAllowed } = await import("@/lib/env");
     expect(adminEmailAllowed("cualquiera@gmail.com")).toBe(false);
-    expect(adminEmailAllowed("pruebas@xgreenenergy.local")).toBe(false);
+    expect(adminEmailAllowed("pruebas@eco-hash.local")).toBe(false);
   });
 
   it("con dinero real, la cuenta de pruebas no puede administrar aunque esté en la lista", async () => {
     vi.stubEnv("DEMO_MODE", "false");
-    vi.stubEnv("ADMIN_EMAILS", "socio@inworldenergy.co, pruebas@xgreenenergy.local");
-    expect((await import("@/lib/env")).adminEmailAllowed("pruebas@xgreenenergy.local")).toBe(false);
+    vi.stubEnv("ADMIN_EMAILS", "socio@eco-hash.co, pruebas@eco-hash.local");
+    expect((await import("@/lib/env")).adminEmailAllowed("pruebas@eco-hash.local")).toBe(false);
   });
 });
 
 describe("orígenes de confianza para el ingreso", () => {
   it("solo la URL pública, las de Vercel y el puerto local de desarrollo", async () => {
-    vi.stubEnv("BETTER_AUTH_URL", "https://inworldenergy.co");
-    vi.stubEnv("VERCEL_URL", "iwe-abc.vercel.app");
+    vi.stubEnv("BETTER_AUTH_URL", "https://eco-hash.co");
+    vi.stubEnv("VERCEL_URL", "ech-abc.vercel.app");
     vi.stubEnv("VERCEL_BRANCH_URL", "");
     vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
     const origins = (await import("@/lib/env")).trustedOrigins();
-    expect(origins.sort()).toEqual(["http://127.0.0.1:3000", "http://localhost:3000", "https://inworldenergy.co", "https://iwe-abc.vercel.app"].sort());
+    expect(origins.sort()).toEqual(["http://127.0.0.1:3000", "http://localhost:3000", "https://eco-hash.co", "https://ech-abc.vercel.app"].sort());
   });
 });

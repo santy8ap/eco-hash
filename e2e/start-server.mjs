@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 const url = process.env.E2E_DATABASE_URL;
-if (!url?.startsWith(`file:${path.join(os.tmpdir(), "xge-e2e-")}`))
+if (!url?.startsWith(`file:${path.join(os.tmpdir(), "ech-e2e-")}`))
   throw new Error("E2E exige una base temporal aislada.");
 const child = spawn(
   process.execPath,
@@ -30,9 +30,9 @@ const child = spawn(
       PREVIEW_TURSO_AUTH_TOKEN: "",
       DATABASE_AUTH_TOKEN: "",
       BETTER_AUTH_URL: "http://127.0.0.1:4173",
-      BETTER_AUTH_SECRET: "xge-e2e-session-key-for-isolated-tests-only-123456",
+      BETTER_AUTH_SECRET: "ech-e2e-session-key-for-isolated-tests-only-123456",
       // La cuenta de pruebas es propietaria del admin solo en esta base temporal (sin PIN, como cualquier propietario).
-      ADMIN_EMAILS: "pruebas@xgreenenergy.local",
+      ADMIN_EMAILS: "pruebas@eco-hash.local",
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
       MERCADOPAGO_ACCESS_TOKEN: "",

@@ -8,8 +8,8 @@ const dataDir = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.ur
 let removed = 0;
 try {
   for (const f of readdirSync(dataDir)) {
-    // iwe.db es la base actual; solaxy.db, la de la versión anterior.
-    if (f.startsWith("iwe.db") || f.startsWith("solaxy.db")) {
+    // eco-hash.db es la base actual; eco-hash.db, la de la versión anterior.
+    if (f.startsWith("eco-hash.db") || f.startsWith("eco-hash.db")) {
       rmSync(path.join(dataDir, f), { force: true });
       removed++;
     }

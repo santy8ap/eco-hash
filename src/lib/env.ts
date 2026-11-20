@@ -5,9 +5,9 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   /** Cuenta de pruebas: solo existe en modo de pruebas (DEMO_MODE distinto de false). */
-  demoEmail: "pruebas@xgreenenergy.local",
-  demoPassword: process.env.DEMO_PASSWORD || "iwe-pruebas-2026",
-  demoName: "Empresa de Pruebas",
+  demoEmail: "pruebas@eco-hash.local",
+  demoPassword: process.env.DEMO_PASSWORD || "ech-pruebas-2026",
+  demoName: "Cuenta de pruebas",
 };
 
 export const googleEnabled = Boolean(env.googleClientId && env.googleClientSecret);
@@ -41,9 +41,9 @@ export function authSecret() {
   }
   // En local sin BETTER_AUTH_SECRET (npm run setup la crea): una clave aleatoria para este proceso, nunca una
   // escrita en el código. Va en globalThis para que sea la misma aunque el módulo se cargue más de una vez.
-  const g = globalThis as unknown as { __iweDevSecret?: string };
-  g.__iweDevSecret ??= `dev-${crypto.randomUUID()}-${crypto.randomUUID()}`;
-  return g.__iweDevSecret;
+  const g = globalThis as unknown as { __echDevSecret?: string };
+  g.__echDevSecret ??= `dev-${crypto.randomUUID()}-${crypto.randomUUID()}`;
+  return g.__echDevSecret;
 }
 
 /** Los propietarios de la administración (ADMIN_EMAILS, separados por comas). El resto del equipo se elige en Admin › Equipo. */

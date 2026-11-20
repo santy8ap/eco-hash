@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-transfer-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-transfer-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let transfer: typeof import("@/lib/payments/transfer");
@@ -13,7 +13,7 @@ let schema: typeof import("@/lib/db/schema");
 let drizzle: typeof import("drizzle-orm");
 let payments: typeof import("@/lib/admin/payments");
 const admin = { id: "admin-1", name: "Admin de prueba" };
-const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "X green Energy S.A.S.", holderId: "901234567-1" };
+const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "eco-hash S.A.S.", holderId: "901234567-1" };
 const MONTH_180 = 460_000;
 
 afterEach(() => vi.stubEnv("DEMO_MODE", ""));
@@ -40,7 +40,7 @@ describe("datos de la cuenta para transferencias", () => {
 
   it("el admin guarda la cuenta; el número queda solo con dígitos", async () => {
     const saved = await transfer.saveTransferAccount(admin, ACCOUNT);
-    expect(saved).toMatchObject({ bank: "Bancolombia", accountType: "corriente", accountNumber: "12345678901", holder: "X green Energy S.A.S." });
+    expect(saved).toMatchObject({ bank: "Bancolombia", accountType: "corriente", accountNumber: "12345678901", holder: "eco-hash S.A.S." });
     expect(await transfer.getTransferAccount()).toMatchObject({ accountNumber: "12345678901" });
     const [log] = await dbMod.db.select().from(schema.adminAudit).where(drizzle.eq(schema.adminAudit.action, "config_transferencia"));
     expect(log).toBeTruthy();

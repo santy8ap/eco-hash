@@ -50,13 +50,13 @@ export function mercadoPagoFor(amountCop: number, limits: MpLimits) {
 const FRESH_MS = 6 * 60 * 60_000;
 const RETRY_MS = 60_000;
 
-const g = globalThis as unknown as { __iweMpLimits?: { token: string; at: number; ttl: number; limits: MpLimits } };
+const g = globalThis as unknown as { __echMpLimits?: { token: string; at: number; ttl: number; limits: MpLimits } };
 
 /** Los topes vigentes, consultados a Mercado Pago y recordados. Sin credenciales o sin respuesta, los conocidos. */
 export async function mercadoPagoLimits(deps: { fetch?: typeof fetch } = {}): Promise<MpLimits> {
   const cfg = mercadoPagoConfig();
   if (!cfg.enabled) return DEFAULT_MP_LIMITS;
-  const cached = g.__iweMpLimits;
+  const cached = g.__echMpLimits;
   if (cached && cached.token === cfg.accessToken && Date.now() - cached.at < cached.ttl) return cached.limits;
   let limits: MpLimits | null = null;
   try {
@@ -72,6 +72,6 @@ export async function mercadoPagoLimits(deps: { fetch?: typeof fetch } = {}): Pr
   } catch {
     /* sin respuesta: se vuelve a intentar en un minuto */
   }
-  g.__iweMpLimits = { token: cfg.accessToken, at: Date.now(), ttl: limits ? FRESH_MS : RETRY_MS, limits: limits ?? DEFAULT_MP_LIMITS };
+  g.__echMpLimits = { token: cfg.accessToken, at: Date.now(), ttl: limits ? FRESH_MS : RETRY_MS, limits: limits ?? DEFAULT_MP_LIMITS };
   return limits ?? DEFAULT_MP_LIMITS;
 }

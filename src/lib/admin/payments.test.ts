@@ -9,7 +9,7 @@ import type { MpPayment } from "@/lib/payments/mercadopago";
 import { buildPayerProofMessage } from "@/lib/signing";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-admpay-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-admpay-")), "test.db")}`;
 const TREASURY = "0x2222222222222222222222222222222222222222";
 vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", "APP_USR-token-de-prueba");
 vi.stubEnv("MERCADOPAGO_API_BASE", "https://mp.falso");
@@ -95,7 +95,7 @@ describe("filtros de la lista de Pagos", () => {
   });
 
   it("un estado o un medio que no existe se ignora", () => {
-    expect(payments.paymentFiltersFrom(new URLSearchParams("estado=inventado&metodo=efectivo&q=XGE-1"))).toMatchObject({ status: "todos", method: "todos", query: "XGE-1" });
+    expect(payments.paymentFiltersFrom(new URLSearchParams("estado=inventado&metodo=efectivo&q=ECH-1"))).toMatchObject({ status: "todos", method: "todos", query: "ECH-1" });
   });
 });
 

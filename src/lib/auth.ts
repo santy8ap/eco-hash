@@ -73,7 +73,7 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 30,
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
-  advanced: { cookiePrefix: "iwe" },
+  advanced: { cookiePrefix: "ech" },
   telemetry: { enabled: false },
   // nextCookies debe ir de último: permite iniciar sesión desde Server Actions.
   plugins: [nextCookies()],

@@ -7,18 +7,18 @@ import { writeTransaction } from "@/lib/db/transaction";
 import { companyProfile, customerEmail, planPeriod, user } from "@/lib/db/schema";
 import { isDeletedEmail } from "@/lib/deleted-account";
 import { baseUrl, env, isDemoMode } from "@/lib/env";
-import { formatCop, formatDate } from "@/lib/format";
+import { formatBtc, formatCop, formatDate, formatHashprice, formatSats } from "@/lib/format";
 import { planCheckoutHref, renewalCheckoutHref } from "@/lib/navigation";
 import { getSupport } from "@/lib/support";
 
 /**
- * Correos al comercializador: pago confirmado, pago por devolver o devuelto, transferencia no confirmada, retiro
+ * Correos al cliente: pago confirmado, pago por devolver o devuelto, transferencia no confirmada, retiro
  * pagado o rechazado, mensualidad por vencer, plan en pausa o por terminar, y la respuesta a sus solicitudes
  * sobre sus datos. Se envían con Resend, como las alertas del admin.
  *
  * - Apagados hasta configurar CUSTOMER_EMAIL_FROM con un remitente de un dominio verificado en Resend: sin
  *   dominio, Resend solo entrega al correo del dueño de la cuenta, nunca a un cliente.
- * - Cada aviso tiene una clave (p. ej. «pago:XGE-…»): el mismo nunca se envía dos veces, y uno que falló se
+ * - Cada aviso tiene una clave (p. ej. «pago:ECH-…»): el mismo nunca se envía dos veces, y uno que falló se
  *   reintenta hasta 3 veces. Queda constancia en la tabla customer_email (sin la dirección de destino).
  * - Nunca demoran una respuesta ni rompen una operación: se envían después de responder.
  * - No van a la cuenta de pruebas ni a las cuentas eliminadas.
@@ -42,7 +42,7 @@ export function customerEmailConfig(): CustomerEmailConfig {
   const domain = SENDER.exec(from)?.[2]?.toLowerCase();
   if (!key) return { enabled: false, from: null, reason: "Falta la clave de Resend (RESEND_API_KEY)." };
   if (!from) return { enabled: false, from: null, reason: "Falta el remitente (CUSTOMER_EMAIL_FROM), de un dominio verificado en Resend." };
-  if (!domain) return { enabled: false, from: null, reason: "CUSTOMER_EMAIL_FROM no es un remitente válido. Ejemplo: X green Energy <avisos@tudominio.co>." };
+  if (!domain) return { enabled: false, from: null, reason: "CUSTOMER_EMAIL_FROM no es un remitente válido. Ejemplo: eco-hash <avisos@tudominio.co>." };
   if (domain === "resend.dev") return { enabled: false, from: null, reason: "El remitente de pruebas de Resend (resend.dev) no entrega a los clientes: verifica tu dominio en Resend." };
   return { enabled: true, from, reason: null };
 }
@@ -165,7 +165,7 @@ export async function deliverCustomerEmail(
   return error ? "fallido" : "enviado";
 }
 
-const g = globalThis as unknown as { __xgeCustomerEmailTasks?: Set<Promise<unknown>> };
+const g = globalThis as unknown as { __echCustomerEmailTasks?: Set<Promise<unknown>> };
 
 /**
  * Programa un aviso para después de responder. `build` arma el mensaje (puede consultar la base) fuera del
@@ -186,7 +186,7 @@ export function emailCustomer(userId: string, build: () => CustomerMessage | nul
   } catch {
     // Fuera de una petición (pruebas o scripts): se envía de una vez.
     const p = task();
-    const tasks = (g.__xgeCustomerEmailTasks ??= new Set());
+    const tasks = (g.__echCustomerEmailTasks ??= new Set());
     tasks.add(p);
     void p.finally(() => tasks.delete(p));
   }
@@ -194,7 +194,7 @@ export function emailCustomer(userId: string, build: () => CustomerMessage | nul
 
 /** Para las pruebas: espera los avisos que se enviaron fuera de una petición. */
 export async function flushCustomerEmails() {
-  await Promise.all([...(g.__xgeCustomerEmailTasks ?? [])]);
+  await Promise.all([...(g.__echCustomerEmailTasks ?? [])]);
 }
 
 /* ───────────── Mensajes ───────────── */
@@ -211,12 +211,10 @@ interface PaymentLike {
 
 interface WithdrawalLike {
   id: string;
-  amountCop: number;
+  amountSats: number | null;
   status: string;
   note?: string | null;
   txHash?: string | null;
-  bankName?: string | null;
-  bankAccountNumber?: string | null;
   walletAddress?: string | null;
 }
 
@@ -236,13 +234,15 @@ const PANEL = { label: "Abrir mi panel", path: "/panel" };
 const MOVEMENTS = { label: "Ver mis movimientos", path: "/panel/billetera" };
 
 export const customerMessages = {
-  paymentConfirmed: (p: PaymentLike, period: { startsAt: number; endsAt: number } | null): CustomerMessage => ({
+  paymentConfirmed: (p: PaymentLike, period: { startsAt: number; endsAt: number; satsPerThDay: number } | null): CustomerMessage => ({
     key: `pago:${p.id}`,
     kind: "pago_confirmado",
     subject: `Confirmamos tu pago de ${formatCop(p.amountCop)}`,
     lines: [
       `Recibimos tu pago de ${formatCop(p.amountCop)} por ${month(p)}.`,
-      period ? `Ese mes genera energía del ${formatDate(period.startsAt)} al ${formatDate(period.endsAt)}.` : "El mes ya está activo.",
+      period
+        ? `Ese mes tu hashrate mina del ${formatDate(period.startsAt)} al ${formatDate(period.endsAt)} con un hashprice de ${formatHashprice(period.satsPerThDay)}.`
+        : "El mes ya está activo.",
       `El comprobante en PDF está en tus movimientos (orden ${p.id}).`,
     ],
     cta: MOVEMENTS,
@@ -280,49 +280,49 @@ export const customerMessages = {
   withdrawalPaid: (w: WithdrawalLike): CustomerMessage => ({
     key: `retiro:${w.id}:pagado`,
     kind: "retiro_pagado",
-    subject: `Pagamos tu retiro de ${formatCop(w.amountCop)}`,
+    subject: `Enviamos tu retiro de ${formatSats(w.amountSats ?? 0)}`,
     lines: [
-      w.walletAddress
-        ? `Enviamos ${formatCop(w.amountCop)} en USDT a tu wallet terminada en ${w.walletAddress.slice(-4)}.`
-        : `Enviamos ${formatCop(w.amountCop)} a tu cuenta${w.bankName ? ` de ${w.bankName}` : ""}${w.bankAccountNumber ? ` terminada en ${w.bankAccountNumber.slice(-4)}` : ""}.`,
-      w.txHash ? `Referencia del envío: ${w.txHash}.` : "Lo verás reflejado según los tiempos de tu banco.",
+      `Enviamos ${formatSats(w.amountSats ?? 0)} (${formatBtc(w.amountSats ?? 0)}) a tu dirección Bitcoin ${w.walletAddress ?? ""}.`,
+      w.txHash
+        ? `Txid: ${w.txHash}. Puedes seguir la transacción en cualquier explorador de bloques, por ejemplo https://mempool.space/tx/${w.txHash}`
+        : "Lo verás en tu billetera cuando la red confirme la transacción.",
     ],
     cta: MOVEMENTS,
   }),
   withdrawalRejected: (w: WithdrawalLike): CustomerMessage => ({
     key: `retiro:${w.id}:rechazado`,
     kind: "retiro_rechazado",
-    subject: `Tu retiro de ${formatCop(w.amountCop)} no se aprobó`,
-    lines: [`Motivo: ${w.note ?? "no se pudo verificar la cuenta de destino"}.`, "El dinero volvió a tu saldo. Puedes pedir un retiro nuevo cuando quieras."],
+    subject: `Tu retiro de ${formatSats(w.amountSats ?? 0)} no se aprobó`,
+    lines: [`Motivo: ${w.note ?? "no se pudo verificar la dirección de destino"}.`, "Los sats volvieron a tu saldo. Puedes pedir un retiro nuevo cuando quieras."],
     cta: MOVEMENTS,
   }),
   monthDue: (s: PlanLike): CustomerMessage => ({
     key: `mensualidad:${s.id}:${s.paidMonths + 1}`,
     kind: "mensualidad_por_vencer",
-    subject: `Tu ${s.planName} necesita el pago del mes ${s.paidMonths + 1}`,
+    subject: `Tu plan ${s.planName} necesita el pago del mes ${s.paidMonths + 1}`,
     lines: [
-      `El mes ${s.paidMonths} de tu ${s.planName} termina el ${formatDate(s.paidUntil)}.`,
-      `Paga el mes ${s.paidMonths + 1} (${formatCop(s.monthlyCop)}) antes de esa fecha para que tu plan siga generando energía sin pausa.`,
+      `El mes ${s.paidMonths} de tu plan ${s.planName} termina el ${formatDate(s.paidUntil)}.`,
+      `Paga el mes ${s.paidMonths + 1} (${formatCop(s.monthlyCop)}) antes de esa fecha para que tu plan siga minando sin pausa.`,
     ],
     cta: { label: `Pagar el mes ${s.paidMonths + 1}`, path: renewalCheckoutHref(s.id) },
   }),
   planPaused: (s: PlanLike): CustomerMessage => ({
     key: `pausa:${s.id}:${s.paidMonths + 1}`,
     kind: "plan_en_pausa",
-    subject: `Tu ${s.planName} está en pausa`,
+    subject: `Tu plan ${s.planName} está en pausa`,
     lines: [
-      `Tu ${s.planName} dejó de generar energía el ${formatDate(s.paidUntil)} porque falta el pago del mes ${s.paidMonths + 1} (${formatCop(s.monthlyCop)}).`,
-      `Puedes retomarlo hasta el ${formatDate(s.graceEndsAt ?? s.paidUntil)}. Después se cierra y libera su cupo; la energía que ya generó sigue en tu saldo.`,
+      `Tu plan ${s.planName} dejó de minar el ${formatDate(s.paidUntil)} porque falta el pago del mes ${s.paidMonths + 1} (${formatCop(s.monthlyCop)}).`,
+      `Puedes retomarlo hasta el ${formatDate(s.graceEndsAt ?? s.paidUntil)}. Después se cierra y libera su capacidad; los sats que ya minó siguen en tu saldo.`,
     ],
     cta: { label: `Pagar el mes ${s.paidMonths + 1}`, path: renewalCheckoutHref(s.id) },
   }),
   planEnding: (s: PlanLike): CustomerMessage => ({
     key: `termina:${s.id}`,
     kind: "plan_por_terminar",
-    subject: `Tu ${s.planName} termina el ${formatDate(s.paidUntil)}`,
+    subject: `Tu plan ${s.planName} termina el ${formatDate(s.paidUntil)}`,
     lines: [
-      `Tu ${s.planName} completa sus ${s.months} meses el ${formatDate(s.paidUntil)}.`,
-      "Si quieres seguir generando energía, puedes comprarlo de nuevo con los precios vigentes. El plan nuevo empieza cuando se confirme su primer pago.",
+      `Tu plan ${s.planName} completa sus ${s.months} meses el ${formatDate(s.paidUntil)}.`,
+      "Si quieres seguir minando, puedes comprarlo de nuevo con los precios vigentes. El plan nuevo empieza cuando se confirme su primer pago.",
     ],
     cta: { label: "Renovar mi plan", path: planCheckoutHref(s.planId) },
   }),
@@ -349,11 +349,14 @@ export const customerMessages = {
 
 /* ───────────── Cuándo se envían ───────────── */
 
-/** Se confirmó un pago real (el pago de prueba no avisa). Dice qué días genera ese mes. */
+/** Se confirmó un pago real (el pago de prueba no avisa). Dice qué días mina ese mes y con qué hashprice. */
 export function emailPaymentConfirmed(p: PaymentLike) {
   if (p.method === "demo") return;
   emailCustomer(p.userId, async () => {
-    const [period] = await db.select({ startsAt: planPeriod.startsAt, endsAt: planPeriod.endsAt }).from(planPeriod).where(eq(planPeriod.txId, p.id));
+    const [period] = await db
+      .select({ startsAt: planPeriod.startsAt, endsAt: planPeriod.endsAt, satsPerThDay: planPeriod.satsPerThDay })
+      .from(planPeriod)
+      .where(eq(planPeriod.txId, p.id));
     return customerMessages.paymentConfirmed(p, period ?? null);
   });
 }

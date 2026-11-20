@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-aseo-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-aseo-")), "test.db")}`;
 
 let jobs: typeof import("./housekeeping");
 let tick: typeof import("./tick");
@@ -19,22 +19,22 @@ type Row = typeof import("@/lib/db/schema").ledgerTx.$inferInsert;
 const base = { userId: "aseo-1", kind: "plan_mes" as const, amountCop: 20_880_000 };
 const ROWS: Row[] = [
   // Mercado Pago: sin pagar hace 3 días (abandonada), hace 1 día (todavía puede pagarse) y con un pago en proceso.
-  { ...base, id: "XGE-MP-VIEJA", status: "pendiente", method: "mercadopago", createdAt: NOW - 3 * DAY },
-  { ...base, id: "XGE-MP-RECIENTE", status: "pendiente", method: "mercadopago", createdAt: NOW - DAY },
-  { ...base, id: "XGE-MP-EN-PROCESO", status: "pendiente", method: "mercadopago", providerId: "mp-777", createdAt: NOW - 10 * DAY },
+  { ...base, id: "ECH-MP-VIEJA", status: "pendiente", method: "mercadopago", createdAt: NOW - 3 * DAY },
+  { ...base, id: "ECH-MP-RECIENTE", status: "pendiente", method: "mercadopago", createdAt: NOW - DAY },
+  { ...base, id: "ECH-MP-EN-PROCESO", status: "pendiente", method: "mercadopago", providerId: "mp-777", createdAt: NOW - 10 * DAY },
   // Cripto: cotización vencida hace 2 días sin hash, una vigente y una que ya se está verificando.
-  { ...base, id: "XGE-CR-VENCIDA", status: "pendiente", method: "crypto", createdAt: NOW - 2 * DAY - HOUR, expiresAt: NOW - 2 * DAY },
-  { ...base, id: "XGE-CR-VIGENTE", status: "pendiente", method: "crypto", createdAt: NOW - 600_000, expiresAt: NOW + 600_000 },
-  { ...base, id: "XGE-CR-VERIFICANDO", status: "verificando", method: "crypto", providerId: "0xabc", createdAt: NOW - 5 * DAY, expiresAt: NOW - 5 * DAY },
+  { ...base, id: "ECH-CR-VENCIDA", status: "pendiente", method: "crypto", createdAt: NOW - 2 * DAY - HOUR, expiresAt: NOW - 2 * DAY },
+  { ...base, id: "ECH-CR-VIGENTE", status: "pendiente", method: "crypto", createdAt: NOW - 600_000, expiresAt: NOW + 600_000 },
+  { ...base, id: "ECH-CR-VERIFICANDO", status: "verificando", method: "crypto", providerId: "0xabc", createdAt: NOW - 5 * DAY, expiresAt: NOW - 5 * DAY },
   // Una transferencia espera al admin el tiempo que haga falta.
-  { ...base, id: "XGE-TR-VIEJA", status: "verificando", method: "transferencia", createdAt: NOW - 20 * DAY },
+  { ...base, id: "ECH-TR-VIEJA", status: "verificando", method: "transferencia", createdAt: NOW - 20 * DAY },
   // Retiros: a wallet sin firmar hace 2 días, sin firmar hace 5 minutos y uno esperando al admin.
   { ...base, id: "RET-SIN-FIRMA", kind: "retiro", status: "pendiente", amountCop: 500_000, createdAt: NOW - 2 * DAY },
   { ...base, id: "RET-FIRMANDO", kind: "retiro", status: "pendiente", amountCop: 500_000, createdAt: NOW - 300_000 },
   { ...base, id: "RET-POR-APROBAR", kind: "retiro", status: "por_aprobar", amountCop: 500_000, createdAt: NOW - 9 * DAY },
   // Otra cuenta: un pago sin pagar hace 2 horas.
-  { ...base, id: "XGE-OTRA-2H", userId: "aseo-2", status: "pendiente", method: "mercadopago", createdAt: NOW - 2 * HOUR },
-  { ...base, id: "XGE-OTRA-10MIN", userId: "aseo-2", status: "pendiente", method: "mercadopago", createdAt: NOW - 600_000 },
+  { ...base, id: "ECH-OTRA-2H", userId: "aseo-2", status: "pendiente", method: "mercadopago", createdAt: NOW - 2 * HOUR },
+  { ...base, id: "ECH-OTRA-10MIN", userId: "aseo-2", status: "pendiente", method: "mercadopago", createdAt: NOW - 600_000 },
 ];
 
 const statusOf = async (id: string) => {
@@ -58,13 +58,13 @@ describe("órdenes abandonadas", () => {
     const r = await jobs.closeAbandonedOrders({ now: NOW });
     expect(r).toEqual({ mercadopago: 1, crypto: 1, otros: 0, retiros: 1 });
 
-    expect(await statusOf("XGE-MP-VIEJA")).toEqual({ status: "cancelada", note: "No se completó el pago en Mercado Pago." });
-    expect(await statusOf("XGE-CR-VENCIDA")).toEqual({ status: "cancelada", note: "La cotización venció sin que se registrara un pago." });
+    expect(await statusOf("ECH-MP-VIEJA")).toEqual({ status: "cancelada", note: "No se completó el pago en Mercado Pago." });
+    expect(await statusOf("ECH-CR-VENCIDA")).toEqual({ status: "cancelada", note: "La cotización venció sin que se registrara un pago." });
     expect(await statusOf("RET-SIN-FIRMA")).toEqual({ status: "cancelada", note: "El retiro no se firmó desde la wallet a tiempo." });
 
-    for (const id of ["XGE-MP-RECIENTE", "XGE-MP-EN-PROCESO", "XGE-CR-VIGENTE", "XGE-OTRA-2H", "RET-FIRMANDO"]) expect((await statusOf(id)).status).toBe("pendiente");
-    expect((await statusOf("XGE-CR-VERIFICANDO")).status).toBe("verificando");
-    expect((await statusOf("XGE-TR-VIEJA")).status).toBe("verificando");
+    for (const id of ["ECH-MP-RECIENTE", "ECH-MP-EN-PROCESO", "ECH-CR-VIGENTE", "ECH-OTRA-2H", "RET-FIRMANDO"]) expect((await statusOf(id)).status).toBe("pendiente");
+    expect((await statusOf("ECH-CR-VERIFICANDO")).status).toBe("verificando");
+    expect((await statusOf("ECH-TR-VIEJA")).status).toBe("verificando");
     expect((await statusOf("RET-POR-APROBAR")).status).toBe("por_aprobar");
   });
 
@@ -75,11 +75,11 @@ describe("órdenes abandonadas", () => {
   it("para una sola cuenta (antes de eliminarla) cierra lo que lleva más de una hora sin pagarse", async () => {
     const r = await jobs.closeAbandonedOrders({ now: NOW, userId: "aseo-2" });
     expect(r).toMatchObject({ mercadopago: 1 });
-    expect((await statusOf("XGE-OTRA-2H")).status).toBe("cancelada");
+    expect((await statusOf("ECH-OTRA-2H")).status).toBe("cancelada");
     // Lo de hace 10 minutos puede estar pagándose ahora mismo.
-    expect((await statusOf("XGE-OTRA-10MIN")).status).toBe("pendiente");
+    expect((await statusOf("ECH-OTRA-10MIN")).status).toBe("pendiente");
     // Lo de la otra cuenta no se toca.
-    expect((await statusOf("XGE-MP-RECIENTE")).status).toBe("pendiente");
+    expect((await statusOf("ECH-MP-RECIENTE")).status).toBe("pendiente");
   });
 });
 

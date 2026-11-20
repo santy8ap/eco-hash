@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { guardApiRequest } from "@/lib/security/request-guard";
 
-const base = { method: "POST", pathname: "/api/withdrawals", host: "solaxy-mvp.vercel.app", origin: "https://solaxy-mvp.vercel.app", secFetchSite: "same-origin", contentLength: "120", extraOrigins: [] as string[] };
+const base = { method: "POST", pathname: "/api/withdrawals", host: "eco-hash.vercel.app", origin: "https://eco-hash.vercel.app", secFetchSite: "same-origin", contentLength: "120", extraOrigins: [] as string[] };
 
 describe("filtro de las peticiones a la API (origen y tamaño)", () => {
   it("deja pasar las peticiones de la propia página", () => {
@@ -16,7 +16,7 @@ describe("filtro de las peticiones a la API (origen y tamaño)", () => {
   });
 
   it("acepta orígenes configurados (la URL pública) y clientes sin navegador", () => {
-    expect(guardApiRequest({ ...base, origin: "https://inworldenergy.co", secFetchSite: "cross-site", extraOrigins: ["https://inworldenergy.co"] })).toEqual({ ok: true });
+    expect(guardApiRequest({ ...base, origin: "https://eco-hash.co", secFetchSite: "cross-site", extraOrigins: ["https://eco-hash.co"] })).toEqual({ ok: true });
     expect(guardApiRequest({ ...base, origin: null, secFetchSite: null })).toEqual({ ok: true });
   });
 

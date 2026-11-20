@@ -24,7 +24,7 @@ async function frequentPass() {
 
 /** Cada instancia consulta la base como máximo cada 30 segundos (evita una escritura por visita). */
 const LOCAL_CHECK_MS = 30_000;
-const memo = globalThis as unknown as { __iweTickNextCheck?: number };
+const memo = globalThis as unknown as { __echTickNextCheck?: number };
 
 /**
  * Conciliación con las visitas: las rutas que se consultan a menudo la llaman con after(), así que
@@ -33,8 +33,8 @@ const memo = globalThis as unknown as { __iweTickNextCheck?: number };
  */
 export async function maybeReconcile({ clock = Date.now, run = frequentPass }: { clock?: () => number; run?: () => Promise<void> } = {}) {
   const now = clock();
-  if (memo.__iweTickNextCheck && now < memo.__iweTickNextCheck) return false;
-  memo.__iweTickNextCheck = now + LOCAL_CHECK_MS;
+  if (memo.__echTickNextCheck && now < memo.__echTickNextCheck) return false;
+  memo.__echTickNextCheck = now + LOCAL_CHECK_MS;
   try {
     if (!(await claimInterval({ id: TICK_ID, intervalMs: TICK_INTERVAL_MS, clock: () => now }))) return false;
     try {

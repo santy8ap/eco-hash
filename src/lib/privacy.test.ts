@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser, fundUser } from "../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-privacy-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-privacy-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let privacy: typeof import("@/lib/privacy");
@@ -27,7 +27,7 @@ beforeAll(async () => {
   await dbMod.db.insert(schema.account).values({ id: "acc-d1", accountId: "google-123", providerId: "google", userId: "d1", accessToken: "token-secreto-google", createdAt: new Date(now), updatedAt: new Date(now) });
   await dbMod.db.insert(schema.session).values({ id: "ses-d1", token: "token-de-sesion-d1", userId: "d1", expiresAt: new Date(now + 86_400_000), createdAt: new Date(now), updatedAt: new Date(now) });
   // d3 pagó un mes que no generó energía: tiene historia contable, pero no saldo ni plan vigente.
-  await dbMod.db.insert(schema.ledgerTx).values({ id: "IWE-PAGADO01", userId: "d3", kind: "plan_mes", status: "confirmada", amountCop: 20_880_000, method: "manual", createdAt: now - 90 * 86_400_000, confirmedAt: now - 90 * 86_400_000 });
+  await dbMod.db.insert(schema.ledgerTx).values({ id: "ECH-PAGADO01", userId: "d3", kind: "plan_mes", status: "confirmada", amountCop: 20_880_000, method: "manual", createdAt: now - 90 * 86_400_000, confirmedAt: now - 90 * 86_400_000 });
 }, 120_000);
 
 describe("plazo de respuesta", () => {
@@ -135,9 +135,9 @@ describe("atenderla desde el admin", () => {
     const order = { userId: "d4", kind: "plan_mes" as const, status: "pendiente" as const, amountCop: 20_880_000, method: "mercadopago" as const };
     await dbMod.db.insert(schema.ledgerTx).values([
       // Abrió el checkout ayer y nunca pagó.
-      { ...order, id: "XGE-ABANDONADA", createdAt: now - 86_400_000 },
+      { ...order, id: "ECH-ABANDONADA", createdAt: now - 86_400_000 },
       // Abrió el checkout hace 5 minutos: puede estar pagando ahora mismo.
-      { ...order, id: "XGE-PAGANDO", createdAt: now - 300_000 },
+      { ...order, id: "ECH-PAGANDO", createdAt: now - 300_000 },
     ]);
     const { request } = await privacy.requestDeletion("d4");
     expect(await privacy.deletionBlockers("d4")).toEqual(["Tiene pagos, retiros o reembolsos en curso."]);
@@ -156,7 +156,7 @@ describe("atenderla desde el admin", () => {
   it("un pago que Mercado Pago tiene en proceso sí detiene la eliminación, por viejo que sea", async () => {
     await createUser("d5", { name: "PSE en Proceso S.A.S." });
     const now = Date.now();
-    await dbMod.db.insert(schema.ledgerTx).values({ id: "XGE-ENPROCESO", userId: "d5", kind: "plan_mes", status: "pendiente", amountCop: 20_880_000, method: "mercadopago", providerId: "mp-999", createdAt: now - 5 * 86_400_000 });
+    await dbMod.db.insert(schema.ledgerTx).values({ id: "ECH-ENPROCESO", userId: "d5", kind: "plan_mes", status: "pendiente", amountCop: 20_880_000, method: "mercadopago", providerId: "mp-999", createdAt: now - 5 * 86_400_000 });
     await privacy.requestDeletion("d5");
     expect(await privacy.deletionBlockers("d5")).toEqual(["Tiene pagos, retiros o reembolsos en curso."]);
   });

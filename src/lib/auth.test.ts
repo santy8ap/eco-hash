@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-auth-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-auth-")), "test.db")}`;
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -117,7 +117,7 @@ describe("seguridad del ingreso (contra la API real de Better Auth)", () => {
 
     // Rutas de la librería de ingreso que la página no usa: no existen.
     const unused = [
-      ["/update-user", { name: "<b>Soporte X green Energy</b>", image: "https://sitio-malicioso.com/rastreo.png" }],
+      ["/update-user", { name: "<b>Soporte eco-hash</b>", image: "https://sitio-malicioso.com/rastreo.png" }],
       ["/change-email", { newEmail: "otro@correo.co" }],
       ["/change-password", { currentPassword: env.demoPassword, newPassword: "otra-clave-larga-123" }],
       ["/delete-user", {}],

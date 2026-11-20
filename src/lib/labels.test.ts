@@ -26,9 +26,9 @@ describe("códigos de orden", () => {
     const code = orderCode();
     expect(code.startsWith(`${BRAND.shortName}-`)).toBe(true);
     expect(isOrderCode(code)).toBe(true);
-    expect(isOrderCode("IWE-1A2B3C4D5E")).toBe(true);
-    expect(isOrderCode("iwe-1a2b3c")).toBe(false);
-    expect(isOrderCode("IWE-NOEXISTE")).toBe(false);
+    expect(isOrderCode("ECH-1A2B3C4D5E")).toBe(true);
+    expect(isOrderCode("ech-1a2b3c")).toBe(false);
+    expect(isOrderCode("ECH-NOEXISTE")).toBe(false);
     expect(isOrderCode("../../admin")).toBe(false);
   });
 });

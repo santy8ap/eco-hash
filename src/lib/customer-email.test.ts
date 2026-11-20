@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { formatCop } from "@/lib/format";
 import { createUser, fundUser } from "../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-correos-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-correos-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 
 let mail: typeof import("@/lib/customer-email");
@@ -15,7 +15,6 @@ let dbMod: typeof import("@/lib/db");
 let schema: typeof import("@/lib/db/schema");
 let drizzle: typeof import("drizzle-orm");
 const actor = { id: "admin-correos", name: "Admin de prueba" };
-const BANK = { bank: "Bancolombia", accountType: "ahorros", accountNumber: "123-456789-01" };
 const DAY = 86_400_000;
 
 type Sent = { from: string; to: string[]; subject: string; text: string; html: string; reply_to?: string };
@@ -24,7 +23,7 @@ let reply: () => Response = () => new Response(JSON.stringify({ id: "email-1" })
 
 function enable() {
   vi.stubEnv("RESEND_API_KEY", "re_clave_de_prueba");
-  vi.stubEnv("CUSTOMER_EMAIL_FROM", "X green Energy <avisos@xgreenenergy.co>");
+  vi.stubEnv("CUSTOMER_EMAIL_FROM", "eco-hash <avisos@eco-hash.co>");
   vi.stubEnv("ADMIN_EMAILS", "");
   vi.stubEnv("ALERT_EMAIL", "");
 }
@@ -41,7 +40,7 @@ beforeAll(async () => {
   schema = await import("@/lib/db/schema");
   drizzle = await import("drizzle-orm");
   const { saveSupport } = await import("@/lib/support");
-  await saveSupport({ email: "soporte@xgreenenergy.co", whatsapp: "" });
+  await saveSupport({ email: "soporte@eco-hash.co", whatsapp: "" });
   for (const id of ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"]) await createUser(id, { name: `Empresa ${id}` });
 }, 120_000);
 
@@ -68,15 +67,15 @@ describe("configuración", () => {
   it("apagados sin remitente, con el remitente de pruebas de Resend o sin clave; encendidos con un dominio propio", () => {
     vi.stubEnv("CUSTOMER_EMAIL_FROM", "");
     expect(mail.customerEmailConfig()).toMatchObject({ enabled: false, reason: expect.stringMatching(/CUSTOMER_EMAIL_FROM/) });
-    vi.stubEnv("CUSTOMER_EMAIL_FROM", "X green Energy <onboarding@resend.dev>");
+    vi.stubEnv("CUSTOMER_EMAIL_FROM", "eco-hash <onboarding@resend.dev>");
     expect(mail.customerEmailConfig()).toMatchObject({ enabled: false, reason: expect.stringMatching(/resend\.dev/) });
     vi.stubEnv("CUSTOMER_EMAIL_FROM", "no es un correo");
     expect(mail.customerEmailConfig().enabled).toBe(false);
-    vi.stubEnv("CUSTOMER_EMAIL_FROM", "avisos@xgreenenergy.co");
+    vi.stubEnv("CUSTOMER_EMAIL_FROM", "avisos@eco-hash.co");
     vi.stubEnv("RESEND_API_KEY", "");
     expect(mail.customerEmailConfig()).toMatchObject({ enabled: false, reason: expect.stringMatching(/RESEND_API_KEY/) });
     enable();
-    expect(mail.customerEmailConfig()).toEqual({ enabled: true, from: "X green Energy <avisos@xgreenenergy.co>", reason: null });
+    expect(mail.customerEmailConfig()).toEqual({ enabled: true, from: "eco-hash <avisos@eco-hash.co>", reason: null });
   });
 
   it("apagados, no se envía nada ni queda constancia", async () => {
@@ -95,14 +94,14 @@ describe("pagos", () => {
     await flush();
     const [email, ...rest] = to("m1");
     expect(rest).toHaveLength(0);
-    expect(email).toMatchObject({ from: "X green Energy <avisos@xgreenenergy.co>", reply_to: "soporte@xgreenenergy.co" });
-    expect(email.subject).toBe(`[Pruebas] Confirmamos tu pago de ${formatCop(20_880_000)}`);
+    expect(email).toMatchObject({ from: "eco-hash <avisos@eco-hash.co>", reply_to: "soporte@eco-hash.co" });
+    expect(email.subject).toBe(`[Pruebas] Confirmamos tu pago de ${formatCop(460_000)}`);
     expect(email.text).toMatch(/^Hola, Laura:/);
     expect(email.text).toMatch(/el mes 1 de tu plan/);
-    expect(email.text).toMatch(/Ese mes genera energía del .+ al .+\./);
+    expect(email.text).toMatch(/Ese mes tu hashrate mina del .+ al .+ con un hashprice de 42 sats\/TH\/día\./);
     expect(email.text).toContain(tx.id);
     expect(email.text).toMatch(/Ver mis movimientos: http:\/\/localhost:\d+\/panel\/billetera/);
-    expect(email.text).toContain("soporte@xgreenenergy.co");
+    expect(email.text).toContain("soporte@eco-hash.co");
     // La misma orden no vuelve a avisar, aunque se pida otra vez.
     const { emailPaymentConfirmed } = mail;
     emailPaymentConfirmed({ ...tx, userId: "m1" });
@@ -136,7 +135,7 @@ describe("pagos", () => {
 
   it("una transferencia que el admin no encontró avisa con el motivo y el enlace para pagar ese mes", async () => {
     const transfer = await import("@/lib/payments/transfer");
-    await transfer.saveTransferAccount(actor, { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "X green Energy S.A.S.", holderId: "901234567-1" });
+    await transfer.saveTransferAccount(actor, { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "eco-hash S.A.S.", holderId: "901234567-1" });
     const { order } = await transfer.reportTransfer({ userId: "m3", planId: "h100", receipt: "COMP-3311" });
     await transfer.rejectTransfer(actor, order.id, "No aparece en el extracto del banco");
     await flush();
@@ -148,21 +147,24 @@ describe("pagos", () => {
 });
 
 describe("retiros", () => {
-  it("pagado: dice a qué cuenta y con qué referencia; rechazado: el motivo y que el dinero volvió al saldo", async () => {
-    const { createBankWithdrawal } = await import("@/lib/withdrawals");
-    await fundUser("m4", { planId: "h250", days: 10 });
-    const a = await createBankWithdrawal({ userId: "m4", amountCop: 2_000_000, destination: BANK });
-    const b = await createBankWithdrawal({ userId: "m4", amountCop: 1_000_000, destination: BANK });
-    await admin.decideWithdrawal(actor, a.id, "aprobar", "", "ENVIO-998877");
-    await admin.decideWithdrawal(actor, b.id, "rechazar", "La cuenta no está a nombre del titular");
+  it("enviado: dice a qué dirección y con qué txid; rechazado: el motivo y que los sats volvieron al saldo", async () => {
+    const { createBtcWithdrawal } = await import("@/lib/withdrawals");
+    const ADDR = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
+    const TXID = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16";
+    await fundUser("m4", { planId: "h250", days: 12 });
+    const a = await createBtcWithdrawal({ userId: "m4", amountSats: 60_000, address: ADDR });
+    const b = await createBtcWithdrawal({ userId: "m4", amountSats: 50_000, address: ADDR });
+    await admin.decideWithdrawal(actor, a.id, "aprobar", "", TXID);
+    await admin.decideWithdrawal(actor, b.id, "rechazar", "La dirección no coincide con la del titular");
     await flush();
     const [paid, rejected] = to("m4");
-    expect(paid.subject).toBe(`[Pruebas] Pagamos tu retiro de ${formatCop(2_000_000)}`);
-    expect(paid.text).toMatch(/a tu cuenta de Bancolombia terminada en 8901\./);
-    expect(paid.text).toMatch(/Referencia del envío: ENVIO-998877\./);
-    expect(rejected.subject).toBe(`[Pruebas] Tu retiro de ${formatCop(1_000_000)} no se aprobó`);
-    expect(rejected.text).toMatch(/Motivo: La cuenta no está a nombre del titular\./);
-    expect(rejected.text).toMatch(/El dinero volvió a tu saldo/);
+    expect(paid.subject).toBe("[Pruebas] Enviamos tu retiro de 60.000 sats");
+    expect(paid.text).toContain(`Enviamos 60.000 sats (0,00060000 BTC) a tu dirección Bitcoin ${ADDR}.`);
+    expect(paid.text).toContain(`Txid: ${TXID}`);
+    expect(paid.text).toContain(`mempool.space/tx/${TXID}`);
+    expect(rejected.subject).toBe("[Pruebas] Tu retiro de 50.000 sats no se aprobó");
+    expect(rejected.text).toMatch(/Motivo: La dirección no coincide con la del titular\./);
+    expect(rejected.text).toMatch(/Los sats volvieron a tu saldo/);
   });
 });
 
@@ -172,10 +174,11 @@ describe("recordatorios", () => {
     await fundUser("m6", { planId: "h100", days: 33 });
     const first = await reminders.sendPlanReminders();
     expect(first.enviados).toBeGreaterThanOrEqual(2);
-    expect(to("m5").map((s) => s.subject)).toEqual(["[Pruebas] Tu Nonce necesita el pago del mes 2"]);
-    expect(to("m5")[0].text).toContain(`Paga el mes 2 (${formatCop(20_880_000)}) antes de esa fecha`);
-    expect(to("m6").map((s) => s.subject)).toEqual(["[Pruebas] Tu Nonce está en pausa"]);
+    expect(to("m5").map((s) => s.subject)).toEqual(["[Pruebas] Tu plan Nonce necesita el pago del mes 2"]);
+    expect(to("m5")[0].text).toContain(`Paga el mes 2 (${formatCop(460_000)}) antes de esa fecha para que tu plan siga minando sin pausa.`);
+    expect(to("m6").map((s) => s.subject)).toEqual(["[Pruebas] Tu plan Nonce está en pausa"]);
     expect(to("m6")[0].text).toMatch(/Puedes retomarlo hasta el /);
+    expect(to("m6")[0].text).toMatch(/los sats que ya minó siguen en tu saldo/);
     sent = [];
     expect((await reminders.sendPlanReminders()).enviados).toBe(0);
     expect(sent).toHaveLength(0);
@@ -183,7 +186,7 @@ describe("recordatorios", () => {
 
   it("las reglas: avisa 5 días antes de la mensualidad, 7 antes de que termine el plan y no si ya lo renovó", () => {
     const now = Date.UTC(2026, 10, 13, 15);
-    const plan = { id: "PLN-1", planId: "h100", planName: "Nonce", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 20_880_000, graceEndsAt: null };
+    const plan = { id: "PLN-1", planId: "h100", planName: "Nonce", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 460_000, graceEndsAt: null };
     expect(reminders.reminderFor({ ...plan, state: "activa" }, now, false)).toBeNull();
     expect(reminders.reminderFor({ ...plan, state: "activa", paidUntil: now + 4 * DAY }, now, false)?.key).toBe("mensualidad:PLN-1:2");
     const ending = { ...plan, paidMonths: 3, state: "activa" as const, paidUntil: now + 6 * DAY };
@@ -230,7 +233,7 @@ describe("entregas", () => {
   });
 
   it("los nombres llegan escapados en el HTML", () => {
-    const { html, text } = mail.renderCustomerEmail({ key: "k", kind: "prueba", subject: "Asunto", lines: ["Motivo: <script>alert(1)</script>"] }, { name: "Ana <b>Gómez</b>", demo: false, url: "https://xgreenenergy.co" });
+    const { html, text } = mail.renderCustomerEmail({ key: "k", kind: "prueba", subject: "Asunto", lines: ["Motivo: <script>alert(1)</script>"] }, { name: "Ana <b>Gómez</b>", demo: false, url: "https://eco-hash.co" });
     expect(html).toContain("Hola, Ana:");
     expect(html).toContain("Motivo: &lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>");
@@ -246,7 +249,7 @@ describe("solicitudes sobre los datos", () => {
     await privacy.deleteAccount(actor, request.id);
     await flush();
     const [bye] = to("m9");
-    expect(bye.subject).toBe(`[Pruebas] Eliminamos tu cuenta de X green Energy`);
+    expect(bye.subject).toBe(`[Pruebas] Eliminamos tu cuenta de eco-hash`);
     expect(bye.text).toMatch(/También borramos tus datos personales\./);
     // De sus correos solo queda la constancia de este aviso: prueba de que se le notificó.
     const left = await dbMod.db.select().from(schema.customerEmail).where(drizzle.eq(schema.customerEmail.userId, "m9"));

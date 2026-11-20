@@ -73,23 +73,23 @@ describe("estados de Mercado Pago", () => {
 
 describe("preferencia del Checkout Pro", () => {
   const base = {
-    orderId: "IWE-ABC1234567",
+    orderId: "ECH-ABC1234567",
     title: "Nonce · mes 1 de 3 · In World Energy",
     amountCop: 9_600_000,
-    baseUrl: "https://solaxy-mvp.vercel.app",
+    baseUrl: "https://eco-hash.vercel.app",
     payer: { email: "laura@correo.co", fullName: "Laura Gómez Restrepo" },
   };
 
   it("cobra el monto exacto en pesos, con la orden como referencia", () => {
     const p = buildPreference(base);
     expect(p.items).toEqual([{ id: "plan-energia", title: "Nonce · mes 1 de 3 · In World Energy", quantity: 1, currency_id: "COP", unit_price: 9_600_000 }]);
-    expect(p.external_reference).toBe("IWE-ABC1234567");
+    expect(p.external_reference).toBe("ECH-ABC1234567");
     expect(p.payer).toEqual({ email: "laura@correo.co", name: "Laura", surname: "Gómez Restrepo" });
   });
 
   it("vuelve a /pagos/resultado con la referencia", () => {
     const p = buildPreference(base);
-    expect(p.back_urls.success).toBe("https://solaxy-mvp.vercel.app/pagos/resultado?ref=IWE-ABC1234567");
+    expect(p.back_urls.success).toBe("https://eco-hash.vercel.app/pagos/resultado?ref=ECH-ABC1234567");
     expect(p.back_urls.pending).toBe(p.back_urls.success);
     expect(p.back_urls.failure).toBe(p.back_urls.success);
     expect(p.auto_return).toBe("approved");

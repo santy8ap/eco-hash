@@ -99,7 +99,7 @@ function DailyReturns({
           className="link inline-flex items-center gap-2 text-sm text-fog"
           onClick={() =>
             downloadCsv(
-              `xge-rendimientos-${isoColombiaDate(rows[0].dayStart)}.csv`,
+              `ech-rendimientos-${isoColombiaDate(rows[0].dayStart)}.csv`,
               [
                 [
                   "Fecha (Colombia)",

@@ -5,7 +5,7 @@ import { createClient } from "@libsql/client";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser, fundUser } from "../../../tests/helpers";
 
-const dir = mkdtempSync(path.join(tmpdir(), "xge-respaldo-"));
+const dir = mkdtempSync(path.join(tmpdir(), "ech-respaldo-"));
 process.env.DATABASE_URL = `file:${path.join(dir, "origen.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 

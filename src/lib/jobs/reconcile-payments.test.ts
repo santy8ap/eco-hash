@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-jobs-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-jobs-")), "test.db")}`;
 vi.stubEnv(
   "CRYPTO_TREASURY_ADDRESS",
   "0x2222222222222222222222222222222222222222",
@@ -23,7 +23,7 @@ beforeAll(async () => {
   await database.db
     .insert(schema.ledgerTx)
     .values([
-      ...["IWE-JOB-A", "IWE-JOB-B", "IWE-JOB-C"].map((id) => ({
+      ...["ECH-JOB-A", "ECH-JOB-B", "ECH-JOB-C"].map((id) => ({
         id,
         userId: "job-owner",
         kind: "plan_mes" as const,
@@ -34,7 +34,7 @@ beforeAll(async () => {
         createdAt: Date.now(),
       })),
       {
-        id: "IWE-JOB-PENDING",
+        id: "ECH-JOB-PENDING",
         userId: "job-owner",
         kind: "plan_mes",
         status: "pendiente",
@@ -43,7 +43,7 @@ beforeAll(async () => {
         createdAt: Date.now(),
       },
       {
-        id: "IWE-JOB-MP",
+        id: "ECH-JOB-MP",
         userId: "job-owner",
         kind: "plan_mes",
         status: "verificando",
@@ -68,15 +68,15 @@ describe("reconciliación durable", () => {
     const result = await jobs.reconcilePayments({
       verify: async (id) => {
         ids.push(id);
-        if (id === "IWE-JOB-A")
+        if (id === "ECH-JOB-A")
           throw new Error("nodo temporalmente fuera de servicio");
         return successful();
       },
     });
-    expect(ids).toEqual(["IWE-JOB-A", "IWE-JOB-B", "IWE-JOB-C"]);
+    expect(ids).toEqual(["ECH-JOB-A", "ECH-JOB-B", "ECH-JOB-C"]);
     expect(result).toMatchObject({ processed: 3, failed: 1 });
     const [state] = await database.db.select().from(schema.jobState);
-    expect(state).toMatchObject({ lockedUntil: 0, cursor: "IWE-JOB-C" });
+    expect(state).toMatchObject({ lockedUntil: 0, cursor: "ECH-JOB-C" });
   });
 
   it("una ejecución en curso excluye otra y una caída libera el turno al vencer el arrendamiento", async () => {
@@ -108,7 +108,7 @@ describe("reconciliación durable", () => {
         },
       }),
     ).toMatchObject({ processed: 1 });
-    expect(ids).toEqual(["IWE-JOB-A"]);
+    expect(ids).toEqual(["ECH-JOB-A"]);
     const next: string[] = [];
     await jobs.reconcilePayments({
       clock: () => now,
@@ -117,7 +117,7 @@ describe("reconciliación durable", () => {
         return successful();
       },
     });
-    expect(next).toEqual(["IWE-JOB-B", "IWE-JOB-C"]);
+    expect(next).toEqual(["ECH-JOB-B", "ECH-JOB-C"]);
     expect(
       (
         await database.db

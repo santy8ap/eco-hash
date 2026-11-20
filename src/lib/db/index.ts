@@ -4,10 +4,10 @@ import type { Client } from "@libsql/client";
 export type { Db, DbSession } from "./client";
 
 type Holder = { client: Client; db: Db; isLocalFile: boolean };
-const g = globalThis as unknown as { __iweDb?: Holder };
+const g = globalThis as unknown as { __echDb?: Holder };
 
 /** Instancia única (sobrevive a la recarga en caliente de `next dev`). */
-const holder: Holder = (g.__iweDb ??= createDb());
+const holder: Holder = (g.__echDb ??= createDb());
 
 export const client = holder.client;
 export const db = holder.db;

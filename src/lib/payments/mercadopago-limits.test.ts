@@ -12,11 +12,11 @@ const COLOMBIA = [
   { id: "efecty", payment_type_id: "ticket", status: "active", min_allowed_amount: 5000, max_allowed_amount: 8_000_000 },
 ];
 
-const g = globalThis as unknown as { __iweMpLimits?: unknown };
+const g = globalThis as unknown as { __echMpLimits?: unknown };
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  delete g.__iweMpLimits;
+  delete g.__echMpLimits;
 });
 
 describe("límites por pago de Mercado Pago", () => {
@@ -72,7 +72,7 @@ describe("límites por pago de Mercado Pago", () => {
     const fails = (async () => {
       throw new Error("sin red");
     }) as unknown as typeof fetch;
-    delete g.__iweMpLimits;
+    delete g.__echMpLimits;
     expect(await mercadoPagoLimits({ fetch: fails })).toEqual(DEFAULT_MP_LIMITS);
   });
 

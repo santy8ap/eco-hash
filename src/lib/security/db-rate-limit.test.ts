@@ -8,7 +8,7 @@ import { migrate } from "@/lib/db/migrate";
 import { createDbRateLimiter } from "@/lib/security/db-rate-limit";
 
 async function testClient() {
-  const { client } = createDb(`file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-ratelimit-")), "rl.db")}`);
+  const { client } = createDb(`file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-ratelimit-")), "rl.db")}`);
   await migrate(client, { localFile: true });
   return client;
 }

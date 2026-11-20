@@ -42,7 +42,7 @@ const check = (cond, msg) => {
     const r = await fetch(`${base}/api/auth/sign-in/email`, {
       method: "POST",
       headers: { "content-type": "application/json", origin: base, "x-forwarded-for": "203.0.113.60" },
-      body: JSON.stringify({ email: "pruebas@xgreenenergy.local", password: `equivocada-${i}` }),
+      body: JSON.stringify({ email: "pruebas@eco-hash.local", password: `equivocada-${i}` }),
     });
     statuses.push(r.status);
   }
@@ -53,7 +53,7 @@ const check = (cond, msg) => {
     ["GET", "/api/portfolio"],
     ["GET", "/api/transactions"],
     ["GET", "/api/transactions/export"],
-    ["GET", "/api/receipts/IWE-0000000000"],
+    ["GET", "/api/receipts/ECH-0000000000"],
     ["GET", "/api/profile"],
     ["GET", "/api/profile/data"],
     ["GET", "/api/profile/deletion"],
@@ -73,7 +73,7 @@ const check = (cond, msg) => {
     ["POST", "/api/admin/alerts"],
     ["GET", "/api/admin/transfer-settings"],
     ["PUT", "/api/admin/transfer-settings"],
-    ["POST", "/api/admin/payments/XGE-0000000000"],
+    ["POST", "/api/admin/payments/ECH-0000000000"],
     ["POST", "/api/admin/data-requests/dat-0000"],
     ["GET", "/api/admin/backup"],
     ["GET", "/api/admin/team"],
@@ -141,7 +141,7 @@ const check = (cond, msg) => {
   const adminNav = await page.getByRole("navigation", { name: "Administración" }).count();
   check(blocked === 1 && adminNav === 0, "una cuenta sin acceso ve «Sin acceso» en /admin, sin el menú ni los datos del admin");
   check((await asUser("/api/admin/team")).status === 403, "una cuenta sin acceso no ve el equipo de administración (403)");
-  const selfAdd = await asUser("/api/admin/team", { method: "POST", body: JSON.stringify({ action: "agregar", email: "pruebas@xgreenenergy.local" }) });
+  const selfAdd = await asUser("/api/admin/team", { method: "POST", body: JSON.stringify({ action: "agregar", email: "pruebas@eco-hash.local" }) });
   check(selfAdd.status === 403, `nadie se agrega a sí mismo al equipo (${selfAdd.status})`);
   const legacyPin = await asUser("/api/admin/activar");
   check(legacyPin.status === 404, `la antigua entrada con PIN ya no existe (${legacyPin.status})`);

@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { MpPayment } from "@/lib/payments/mercadopago";
 import { createUser } from "../../../tests/helpers";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "iwe-mp-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-mp-")), "test.db")}`;
 const TOKEN = "APP_USR-token-de-prueba";
 const SECRET = "mp_secret_de_prueba";
 vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", TOKEN);
@@ -258,7 +258,7 @@ describe("orden de un mes con Mercado Pago", () => {
 });
 
 describe("topes de Mercado Pago", () => {
-  const limitsCache = globalThis as unknown as { __iweMpLimits?: unknown };
+  const limitsCache = globalThis as unknown as { __echMpLimits?: unknown };
 
   it("hasta el tope de las tarjetas ofrece tarjeta y PSE", async () => {
     await createUser("tope-1");
@@ -273,7 +273,7 @@ describe("topes de Mercado Pago", () => {
       { id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 340_000_000 },
       { id: "visa", payment_type_id: "credit_card", status: "active", max_allowed_amount: 3_000_000 },
     ];
-    delete limitsCache.__iweMpLimits;
+    delete limitsCache.__echMpLimits;
     try {
       const o = await order("tope-2", { planId: "h1000" });
       expect(o.amountCop).toBe(4_200_000);
@@ -281,7 +281,7 @@ describe("topes de Mercado Pago", () => {
       expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm", "credit_card", "debit_card", "prepaid_card"]);
     } finally {
       mp.methods = COLOMBIA_METHODS;
-      delete limitsCache.__iweMpLimits;
+      delete limitsCache.__echMpLimits;
     }
   });
 
@@ -290,14 +290,14 @@ describe("topes de Mercado Pago", () => {
     const before = mp.preferences.length;
     const rows = async () => (await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "tope-3"))).length;
     mp.methods = [{ id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 400_000 }];
-    delete limitsCache.__iweMpLimits;
+    delete limitsCache.__echMpLimits;
     try {
       await expect(order("tope-3", { planId: "h100" })).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/Mercado Pago recibe hasta \$ 400\.000/) });
       expect(mp.preferences.length).toBe(before);
       expect(await rows()).toBe(0);
     } finally {
       mp.methods = COLOMBIA_METHODS;
-      delete limitsCache.__iweMpLimits;
+      delete limitsCache.__echMpLimits;
     }
   });
 });
@@ -457,7 +457,7 @@ describe("confirmación del pago", () => {
         .status,
     ).toBe(200);
     expect(
-      await svc.syncMercadoPagoOrder({ orderId: "IWE-NOEXISTE00" }, deps),
+      await svc.syncMercadoPagoOrder({ orderId: "ECH-NOEXISTE00" }, deps),
     ).toBeNull();
   });
 

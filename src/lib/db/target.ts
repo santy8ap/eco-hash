@@ -23,15 +23,15 @@ export function databaseTarget(env: Record<string, string | undefined> = process
   if (env.VERCEL_ENV === "preview") {
     const url = value(env.PREVIEW_TURSO_DATABASE_URL);
     if (url) return { url, authToken: value(env.PREVIEW_TURSO_AUTH_TOKEN), kind: "pruebas" };
-    return { url: "file:/tmp/iwe-preview.db", kind: "temporal" };
+    return { url: "file:/tmp/ech-preview.db", kind: "temporal" };
   }
   const url = value(env.TURSO_DATABASE_URL) ?? value(env.DATABASE_URL);
   if (url) {
     const authToken = value(env.TURSO_AUTH_TOKEN) ?? value(env.DATABASE_AUTH_TOKEN);
     return { url, authToken, kind: url.startsWith("file:") ? "local" : "principal" };
   }
-  if (env.VERCEL) return { url: "file:/tmp/iwe.db", kind: "temporal" };
-  return { url: "file:./data/iwe.db", kind: "local" };
+  if (env.VERCEL) return { url: "file:/tmp/eco-hash.db", kind: "temporal" };
+  return { url: "file:./data/eco-hash.db", kind: "local" };
 }
 
 /** ¿Esta vista previa tiene su propia base? Entonces puede migrarla sin tocar producción. */

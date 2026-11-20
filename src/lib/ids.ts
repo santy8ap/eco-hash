@@ -11,8 +11,8 @@ export function newId(prefix = "") {
 }
 
 /**
- * Código de orden con la sigla de la marca, p. ej. XGE-7F3A21C9B0. También es la referencia del pago en
- * Mercado Pago: debe ser única. Las órdenes de antes del cambio de marca conservan su sigla (IWE-…).
+ * Código de orden con la sigla de la marca, p. ej. ECH-7F3A21C9B0. También es la referencia del pago en
+ * Mercado Pago: debe ser única. Las órdenes de antes del cambio de marca conservan su sigla (ECH-…).
  */
 export function orderCode() {
   return `${BRAND.shortName}-${randomHex(5).toUpperCase()}`;

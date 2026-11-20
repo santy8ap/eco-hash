@@ -6,7 +6,7 @@ import { createUser } from "../../tests/helpers";
 import { historyFilters } from "@/lib/history-filters";
 import { bogotaMs } from "@/lib/time";
 
-process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "xge-history-")), "test.db")}`;
+process.env.DATABASE_URL = `file:${path.join(mkdtempSync(path.join(tmpdir(), "ech-history-")), "test.db")}`;
 vi.stubEnv("BETTER_AUTH_SECRET", "secreto-de-prueba-suficientemente-largo-123");
 let history: typeof import("@/lib/transactions");
 beforeAll(async () => {

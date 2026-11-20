@@ -82,7 +82,7 @@ export async function appliedMigrations(client: Pick<Client, "execute">) {
 /** Revisa que un JSON sea un respaldo de esta página y dice qué está mal si no lo es. */
 export function parseBackup(value: unknown): Backup {
   const b = value as Partial<Backup> | null;
-  if (!b || b.formato !== BACKUP_FORMAT) throw new Error("El archivo no es un respaldo de X green Energy.");
+  if (!b || b.formato !== BACKUP_FORMAT) throw new Error("El archivo no es un respaldo de eco-hash.");
   if (b.version !== BACKUP_VERSION) throw new Error(`El respaldo es de la versión ${b.version} del formato; este programa restaura la ${BACKUP_VERSION}.`);
   if (!Array.isArray(b.migraciones) || !b.tablas || typeof b.tablas !== "object") throw new Error("El respaldo está incompleto.");
   for (const table of BACKUP_TABLES) if (!Array.isArray(b.tablas[table])) throw new Error(`Al respaldo le falta la tabla ${table}.`);
