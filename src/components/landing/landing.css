@@ -1,81 +1,286 @@
-/* Inicio de eco-hash: lo propio de esta página. Los tokens viven en globals.css. */
+/*
+ * Portada de eco-hash: «Bitcoin minado con agua de río». Lo propio de esta página va bajo .landing; los tokens base
+ * viven en globals.css. Al final, los estilos del bloque en vivo que también usa /ingresar.
+ */
 
-.landing-hero {
-  position: relative;
+/* En la capa de componentes: las utilidades de Tailwind (leading-…, text-…) pueden ajustar cada caso. */
+@layer components {
+  .landing {
+    /* Las capas de la cordillera, de la más lejana a la más cercana: de noche, lo lejano se pierde en lo oscuro. */
+    --ridge-0: #2c3d35;
+    --ridge-1: #40594b;
+    --ridge-2: #62836f;
+    --ridge-3: #96b5a0;
+    /* El agua del río: un azul verdoso que no compite con el ámbar de las acciones ni con el jade de «en línea». */
+    --water: #5db7c4;
+    --font-display: var(--font-shoulders), var(--font-sans);
+  }
+
+  html[data-theme="light"] .landing {
+    /* De día, lo lejano se pierde en la neblina clara y lo cercano es verde oscuro. */
+    --ridge-0: #c6d2ca;
+    --ridge-1: #9cb1a4;
+    --ridge-2: #5c7b6b;
+    --ridge-3: #22413a;
+    --water: #1a7684;
+  }
+
+  /* Titulares: Big Shoulders, condensada como los letreros de una central eléctrica, en tipo de oración. */
+  .landing .shout {
+    font-family: var(--font-display);
+    font-weight: 760;
+    line-height: 0.9;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+
+  /* En la portada las cifras van en la letra del texto, con dígitos tabulares: la monoespaciada queda para los hashes. */
+  .landing .num,
+  .landing .figure {
+    font-family: var(--font-sans);
+    font-stretch: normal;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .landing-nav a {
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    transition:
+      color 160ms,
+      background-color 160ms;
+  }
+
+  .landing-nav a:hover {
+    color: var(--color-ink);
+    background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  }
+
+  /* ───────────── La cordillera del último bloque ───────────── */
+
+  .landscape {
+    height: clamp(190px, 27vw, 390px);
+    overflow: hidden;
+    pointer-events: none;
+    /* La neblina: arriba, las montañas lejanas se disuelven en el cielo. */
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24%);
+  }
+
+  .landscape svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .landscape text {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-stretch: 87.5%;
+    font-weight: 400;
+  }
+
+  .ridge-0 {
+    fill: var(--ridge-0);
+  }
+  .ridge-1 {
+    fill: var(--ridge-1);
+  }
+  .ridge-2 {
+    fill: var(--ridge-2);
+  }
+  .ridge-3 {
+    fill: var(--ridge-3);
+    font-weight: 500;
+  }
+
+  .river {
+    fill: var(--water);
+    font-weight: 500;
+  }
+
+  /* El único movimiento que no pide nadie: el río corre despacio. Con movimiento reducido, se queda quieto. */
+  .river-flow {
+    animation: river-run 140s linear infinite;
+  }
+  .river-flow-slow {
+    animation-duration: 190s;
+  }
+
+  /* Un bloque nuevo: los caracteres de la montaña aparecen con un fundido corto. */
+  .ridges {
+    animation: ridges-in 1.2s var(--ease-out-soft);
+  }
+
+  /* ───────────── La red hoy: una franja de lecturas bajo el dibujo ───────────── */
+
+  .landing .strip {
+    border-block: 1px solid var(--color-line);
+  }
+
+  .landing .strip dl > div {
+    border-color: var(--color-line);
+  }
+
+  @media (max-width: 1023px) {
+    .landing .strip dl > div:nth-child(odd) {
+      border-right-width: 1px;
+    }
+    .landing .strip dl > div:nth-child(-n + 2) {
+      border-bottom-width: 1px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .landing .strip dl > div + div {
+      border-left-width: 1px;
+    }
+  }
+
+  /* ───────────── Del río a tu billetera ───────────── */
+
+  .flow {
+    --dot: 13px;
+  }
+
+  .flow-station {
+    position: relative;
+  }
+
+  /* Cada parada es un punto sobre el curso del agua. */
+  .flow-station::before {
+    position: absolute;
+    width: var(--dot);
+    height: var(--dot);
+    border: 2px solid var(--water);
+    border-radius: 999px;
+    background: var(--color-void);
+    content: "";
+  }
+
+  /* En celular el agua baja por la izquierda, de parada en parada. */
+  @media (max-width: 1023px) {
+    .flow-station {
+      padding: 0 0 2.25rem 2rem;
+      border-left: 2px solid var(--water);
+      margin-left: calc(var(--dot) / 2 - 1px);
+    }
+    .flow-station:last-child {
+      border-left-color: transparent;
+    }
+    .flow-station::before {
+      top: 0.15rem;
+      left: calc(var(--dot) / -2 - 1px);
+    }
+  }
+
+  /* En escritorio el agua cae de izquierda a derecha: el salto que mueve las turbinas, y luego el tramo plano. */
+  @media (min-width: 1024px) {
+    .flow-line {
+      position: absolute;
+      inset: 0 0 auto;
+      width: 100%;
+      height: 80px;
+      color: var(--water);
+      pointer-events: none;
+    }
+    .flow-station {
+      padding: calc(var(--drop) + 2.4rem) 1.75rem 0 0;
+    }
+    .flow-station::before {
+      top: calc(var(--drop) + 8px - var(--dot) / 2);
+      left: 0;
+    }
+  }
+
+  .capacity-gauge {
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--water) 18%, transparent);
+    overflow: hidden;
+  }
+
+  .capacity-gauge > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--water);
+  }
+
+  /* ───────────── Tarifas ───────────── */
+
+  .tariff > li {
+    border-top: 1px solid var(--color-line-strong);
+  }
+
+  .tariff > li:last-child {
+    border-bottom: 1px solid var(--color-line-strong);
+  }
+
+  /* ───────────── Preguntas y cierre ───────────── */
+
+  .landing-faq {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .landing-faq:last-child {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .landing-faq summary {
+    outline-offset: 4px;
+  }
+
+  /* El cierre repite el río, quieto: el final del recorrido. */
+  .river-rule {
+    font-family: var(--font-mono);
+    font-stretch: 87.5%;
+    color: var(--water);
+    white-space: pre;
+    overflow: hidden;
+    line-height: 1;
+  }
+
+  /* ───────────── Bloque en vivo de /ingresar ───────────── */
+
+  /* Un resplandor ámbar tenue detrás del bloque en vivo. */
+  .block-readout::before {
+    position: absolute;
+    inset: -40% -30% auto auto;
+    width: 70%;
+    height: 90%;
+    background: radial-gradient(
+      closest-side,
+      var(--color-amber-soft),
+      transparent
+    );
+    content: "";
+    pointer-events: none;
+  }
+
+  .block-readout > * {
+    position: relative;
+  }
+
+  .block-hash {
+    color: var(--color-ink);
+  }
+
+  /* Los ceros del principio son la prueba de trabajo: se ven, pero no gritan. */
+  .block-hash-zeros {
+    color: var(--color-dim);
+  }
 }
 
-/* Un resplandor ámbar tenue detrás del bloque en vivo: el único adorno de la página. */
-.block-readout::before {
-  position: absolute;
-  inset: -40% -30% auto auto;
-  width: 70%;
-  height: 90%;
-  background: radial-gradient(closest-side, var(--color-amber-soft), transparent);
-  content: "";
-  pointer-events: none;
+@keyframes river-run {
+  from {
+    transform: translateX(var(--river-from));
+  }
+  to {
+    transform: translateX(0);
+  }
 }
-
-.block-readout > * {
-  position: relative;
-}
-
-.block-hash {
-  color: var(--color-ink);
-}
-
-/* Los ceros del principio son la prueba de trabajo: se ven, pero no gritan. */
-.block-hash-zeros {
-  color: var(--color-dim);
-}
-
-.landing-nav a {
-  border-radius: 8px;
-  padding: 0.4rem 0.7rem;
-  transition:
-    color 160ms,
-    background-color 160ms;
-}
-
-.landing-nav a:hover {
-  color: var(--color-ink);
-  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
-}
-
-/* El mapa de la granja: contenedores largos de 30 mineros (15 × 2). */
-.farm-container {
-  display: grid;
-  grid-template-columns: repeat(15, minmax(0, 1fr));
-  gap: 4px;
-  padding: 8px;
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: var(--color-raise);
-}
-
-.farm-cell {
-  display: inline-block;
-  aspect-ratio: 1.5;
-  border-radius: 3px;
-  border: 1px solid var(--color-line-strong);
-  background: transparent;
-}
-
-figcaption .farm-cell {
-  width: 20px;
-}
-
-.farm-cell[data-sold] {
-  border-color: transparent;
-  background: var(--color-amber);
-  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.18);
-}
-
-.landing-faq summary {
-  outline-offset: 4px;
-}
-
-.final-cta {
-  background:
-    radial-gradient(ellipse 60% 120% at 100% 100%, var(--color-amber-soft), transparent 70%),
-    var(--color-raise);
+@keyframes ridges-in {
+  from {
+    opacity: 0.15;
+  }
 }

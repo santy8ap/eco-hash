@@ -27,17 +27,26 @@ test("el bloque en vivo muestra la altura, el hash con sus ceros y lo que minar�
   await page.goto("/");
   const block = page.getByRole("region", { name: "Red Bitcoin en este momento" });
   await expect(block).toContainText("Red Bitcoin en vivo");
-  await expect(block).toContainText("974.120");
-  await expect(block).toContainText(/hace 3 min/);
+  await expect(block).toContainText("Bloque 974.120");
+  await expect(block).toContainText(/minado hace 3 min/);
   await expect(block.locator(".block-hash-zeros")).toHaveText("0000000000000000000");
   await expect(block).toContainText("1a6f3c2be7d4598e0c1f2a3b4c5d6e7f8091a2b3c4d5e");
+  await expect(block).toContainText("La cordillera de abajo está tejida con este hash");
   await expect(block.getByRole("link", { name: "Ver en mempool.space" })).toHaveAttribute("href", `https://mempool.space/block/${HASH}`);
-  await expect(block).toContainText("1.180 bloques");
-  await expect(block).toContainText(/Un plan Nonce \(100 TH\/s\) minó desde que abriste esta página/);
+  await expect(page.getByText(/Desde que abriste esta página, un plan Nonce \(100 TH\/s\) minó/)).toBeVisible();
+
+  // La cordillera se teje con los caracteres del hash, después de sus ceros iniciales.
+  const art = page.locator(".landscape .ridges");
+  await expect(art).not.toContainText("·");
+  const used = new Set((await art.textContent())!.replace(/[\s\u00a0]/g, ""));
+  const tail = new Set(HASH.replace(/^0+/, ""));
+  expect(used.size).toBeGreaterThan(8);
+  for (const ch of used) expect(tail.has(ch)).toBe(true);
 
   const strip = page.getByRole("region", { name: "La red Bitcoin hoy" });
   await expect(strip).toContainText("1,18 ZH/s");
   await expect(strip).toContainText("+2,75 %");
+  await expect(strip).toContainText("en 1.180 bloques");
 });
 
 test("el bloque se abre en mempool.space aunque el navegador no abra pestañas nuevas, y el enlace se puede tocar con el dedo", async ({ page }) => {
@@ -73,6 +82,9 @@ test("sin conexión con mempool.space se rotulan los valores de referencia y no 
   await expect(block).toContainText("altura estimada");
   await expect(block.getByText("El hash del bloque aparece cuando hay conexión con mempool.space.")).toBeVisible();
   await expect(block.getByRole("link", { name: "Ver en mempool.space" })).toHaveCount(0);
+  // Sin un hash real, la cordillera se dibuja con puntos: no se inventa un hash.
+  await expect(page.locator(".landscape .ridges")).toContainText("·");
+  await expect(page.locator(".landscape .ridges")).not.toContainText(/[0-9a-f]/);
 });
 
 const COINBASE = /ws-feed\.exchange\.coinbase\.com/;

@@ -39,12 +39,16 @@ test("la portada respeta la preferencia de movimiento reducido", async ({ page }
   // Duración (en segundos) del latido del LED «en línea»: con movimiento reducido queda en casi cero.
   const pulse = () =>
     page.locator(".live-dot").first().evaluate((el) => parseFloat(getComputedStyle(el, "::after").animationDuration));
+  // El río de ceros de la cordillera corre despacio; con movimiento reducido se queda quieto.
+  const river = () => page.locator(".river-flow").first().evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
   await expect.poll(pulse).toBeGreaterThan(1);
+  await expect.poll(river).toBeGreaterThan(60);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect.poll(pulse).toBeLessThan(0.001);
+  await expect.poll(river).toBeLessThan(0.001);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "Ver los planes" })).toBeVisible();
 });

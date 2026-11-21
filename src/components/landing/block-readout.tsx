@@ -4,6 +4,7 @@ import { PLANS } from "@/config/plans";
 import { useCatalog } from "@/lib/client/use-catalog";
 import { useNetwork } from "@/lib/client/use-network";
 import { useNow } from "@/lib/client/use-now";
+import { useSinceMount } from "@/lib/client/use-since-mount";
 import { formatNumber, formatTh } from "@/lib/format";
 import { OutboundLink } from "@/components/ui/outbound-link";
 
@@ -52,17 +53,6 @@ function useResolvingHash(hash: string | null) {
     return () => cancelAnimationFrame(frame);
   }, [hash]);
   return shown;
-}
-
-/** Milisegundos desde que el componente apareció en pantalla, renovados cada `everyMs`. */
-function useSinceMount(everyMs: number) {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    const start = performance.now();
-    const id = setInterval(() => setElapsed(performance.now() - start), everyMs);
-    return () => clearInterval(id);
-  }, [everyMs]);
-  return elapsed;
 }
 
 function BlockHash({ hash }: { hash: string }) {

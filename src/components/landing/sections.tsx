@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { BRAND } from "@/config/brand";
 import { DEFAULT_HASHPRICE_SATS, FARM } from "@/config/farm";
-import { PLANS, PLAN_MONTHS } from "@/config/plans";
+import { PLANS } from "@/config/plans";
 import { DAYS_PER_MONTH, GRACE_DAYS } from "@/lib/mining/plan-math";
 import { isDemoMode } from "@/lib/env";
-import { formatNumber, formatSats } from "@/lib/format";
+import { formatNumber, formatSats, formatTh } from "@/lib/format";
+import { riverRows } from "@/lib/landscape";
 import { MIN_WITHDRAWAL_SATS } from "@/lib/withdrawal-schema";
 import { AccountLink } from "@/components/auth/account-link";
 import { Logo } from "@/components/ui/logo";
 import { ThemeSelector } from "@/components/ui/theme-selector";
-import { BlockReadout } from "./block-readout";
+import { BlockCaption } from "./block-landscape";
+import { StarterCounter } from "./starter-counter";
 
 export function LandingNav() {
   return (
@@ -21,8 +23,8 @@ export function LandingNav() {
         <nav className="landing-nav ml-6 hidden flex-1 items-center gap-1 text-[0.95rem] text-fog lg:flex" aria-label="Secciones">
           <a href="#granja">La granja</a>
           <a href="#planes">Planes</a>
-          <a href="#como-funciona">Cómo funciona</a>
           <a href="#preguntas">Preguntas</a>
+          <a href="#empezar">Cómo empezar</a>
           <Link href="/ayuda">Ayuda</Link>
         </nav>
         <div className="ml-auto flex items-center gap-2">
@@ -34,63 +36,32 @@ export function LandingNav() {
   );
 }
 
+/**
+ * El titular, la invitación y, a la derecha, el último bloque de la red. Debajo va la cordillera tejida con su hash,
+ * de lado a lado de la pantalla.
+ */
 export function Hero() {
-  const [smallest, biggest] = [PLANS[0], PLANS.at(-1)!];
   return (
-    <section className="landing-hero mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] items-center gap-10 px-4 pb-14 pt-10 sm:px-8 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-14 lg:pb-20 lg:pt-20">
-      <div className="min-w-0">
-        <h1 className="display text-[clamp(2.6rem,6.4vw,4.6rem)]">Mina Bitcoin sin comprar una sola máquina.</h1>
-        <p className="mt-6 max-w-[50ch] text-[1.08rem] leading-relaxed text-fog sm:text-[1.15rem]">
-          Contrata hashrate en nuestra granja hidroeléctrica de {FARM.location}. Pagas cada mes en pesos y tus sats se acumulan día y noche en tu
-          panel.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#planes" className="btn btn-solid px-5">
-            Ver los planes
-          </a>
-          <AccountLink variant="cta" />
+    <section aria-labelledby="titulo" className="mx-auto max-w-[1200px] px-4 pt-10 sm:px-8 sm:pt-14 lg:pt-16">
+      <h1 id="titulo" className="shout max-w-[15ch] text-[clamp(3.4rem,8.4vw,7.4rem)]">
+        Bitcoin minado con agua de río.
+      </h1>
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:items-end">
+        <div>
+          <p className="max-w-[50ch] text-[1.08rem] leading-relaxed text-fog sm:text-[1.15rem]">
+            Alquilas hashrate en nuestra granja de {FARM.location} y lo pagas mes a mes, en pesos. Lo que mina llega en sats a tu panel, segundo a
+            segundo, y lo retiras a tu billetera Bitcoin.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="#planes" className="btn btn-solid px-5">
+              Ver los planes
+            </a>
+            <AccountLink variant="cta" />
+          </div>
+          <StarterCounter />
         </div>
-        <p className="mt-6 text-sm text-mute">
-          De {formatNumber(smallest.hashrateTh)} a {formatNumber(biggest.hashrateTh)} TH/s, contratos de {PLAN_MONTHS} meses y retiros en BTC a tu billetera.
-        </p>
+        <BlockCaption />
       </div>
-      <BlockReadout />
-    </section>
-  );
-}
-
-const STEPS = [
-  {
-    title: "Crea tu cuenta",
-    text: "Entra con Google y completa tus datos: nombre, documento, celular y ciudad. Los pedimos una sola vez, antes del primer pago.",
-  },
-  {
-    title: "Elige un plan y paga el primer mes",
-    text: "Paga con Mercado Pago (tarjeta, PSE o Nequi), transferencia bancaria o USDT. Tu hashrate empieza a minar cuando se confirma el pago.",
-  },
-  {
-    title: "Mira tus sats y retíralos",
-    text: `En tu panel los sats suben cada segundo. Desde ${formatSats(MIN_WITHDRAWAL_SATS)} los puedes enviar a tu billetera Bitcoin.`,
-  },
-];
-
-export function HowItWorks() {
-  return (
-    <section id="como-funciona" aria-labelledby="como-titulo" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 sm:px-8">
-      <h2 id="como-titulo" className="display text-[clamp(2.1rem,4.6vw,3.25rem)]">
-        Cómo funciona
-      </h2>
-      <ol className="mt-10 grid gap-3 md:grid-cols-3">
-        {STEPS.map((s, i) => (
-          <li key={s.title} className="panel p-6">
-            <span className="figure flex h-10 w-10 items-center justify-center rounded-[10px] bg-amber-soft text-lg text-amber-text" aria-hidden="true">
-              {i + 1}
-            </span>
-            <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
-            <p className="mt-2 leading-relaxed text-fog">{s.text}</p>
-          </li>
-        ))}
-      </ol>
     </section>
   );
 }
@@ -132,20 +103,20 @@ export function Faq() {
   return (
     <section id="preguntas" aria-labelledby="preguntas-titulo" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 sm:px-8">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:gap-16">
-        <h2 id="preguntas-titulo" className="display text-[clamp(2.1rem,4.6vw,3.25rem)]">
+        <h2 id="preguntas-titulo" className="shout text-[clamp(2.8rem,6.4vw,4.8rem)] lg:sticky lg:top-28 lg:self-start">
           Preguntas frecuentes
         </h2>
-        <div className="grid gap-2">
+        <div>
           {items.map((f) => (
-            <details key={f.q} className="landing-faq group panel px-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-[1.05rem] font-medium [&::-webkit-details-marker]:hidden">
+            <details key={f.q} className="landing-faq group">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-6 py-4 text-[1.08rem] font-medium [&::-webkit-details-marker]:hidden">
                 {f.q}
-                <span className="relative h-3.5 w-3.5 shrink-0 text-amber-text" aria-hidden="true">
+                <span className="relative h-3.5 w-3.5 shrink-0 text-fog" aria-hidden="true">
                   <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 rounded bg-current" />
                   <span className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 rounded bg-current transition-transform group-open:scale-y-0" />
                 </span>
               </summary>
-              <p className="max-w-[68ch] pb-5 leading-relaxed text-fog">{f.a}</p>
+              <p className="max-w-[66ch] pb-6 leading-relaxed text-fog">{f.a}</p>
             </details>
           ))}
         </div>
@@ -154,19 +125,48 @@ export function Faq() {
   );
 }
 
-export function FinalCta() {
+const STEPS = [
+  { title: "Entra con Google", text: "Completa tus datos una sola vez: nombre, documento, celular y ciudad." },
+  {
+    title: "Paga el primer mes",
+    text: "Con Mercado Pago (tarjeta, PSE o Nequi), transferencia bancaria o USDT. Tu hashrate empieza a minar cuando se confirma el pago.",
+  },
+  {
+    title: "Retira tus sats",
+    text: `En tu panel los sats suman cada segundo. Desde ${formatSats(MIN_WITHDRAWAL_SATS)} los envías a tu billetera Bitcoin.`,
+  },
+];
+
+/** El cierre: el río vuelve a aparecer, quieto, y debajo los tres pasos para empezar. */
+export function Closing() {
+  const [river] = riverRows();
   return (
-    <section className="mx-auto max-w-[1200px] px-4 sm:px-8">
-      <div className="final-cta panel relative overflow-hidden px-6 py-10 sm:px-10 sm:py-14">
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="display max-w-[18ch] text-[clamp(2rem,4.4vw,3rem)]">Empieza con {formatNumber(PLANS[0].hashrateTh)} TH/s.</h2>
-            <p className="mt-3 max-w-[48ch] leading-relaxed text-fog">Paga el primer mes y mira cómo suben tus sats desde el primer segundo.</p>
-          </div>
-          <a href="#planes" className="btn btn-solid px-5">
+    <section id="empezar" aria-labelledby="empezar-titulo" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 sm:px-8">
+      <p className="river-rule text-[0.8rem]" aria-hidden="true">
+        {river + river}
+      </p>
+      <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+        <div>
+          <h2 id="empezar-titulo" className="shout text-[clamp(3.2rem,8.5vw,6.5rem)] leading-[1.04]">
+            Empieza con {formatTh(PLANS[0].hashrateTh)}.
+          </h2>
+          <a href="#planes" className="btn btn-solid mt-8 px-5">
             Elegir un plan
           </a>
         </div>
+        <ol className="grid gap-8">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4">
+              <span className="shout text-[2.6rem] leading-none text-amber-text" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-lg font-semibold">{s.title}</h3>
+                <p className="mt-1 max-w-[52ch] leading-relaxed text-fog">{s.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
@@ -178,8 +178,9 @@ export function Footer() {
       <div className="flex flex-col gap-8 border-t border-line pt-8 text-sm text-mute md:flex-row md:items-start md:justify-between">
         <div>
           <Logo />
-          <p className="mt-4 max-w-[54ch] leading-relaxed">
-            Las cifras de minería son estimaciones con el hashprice vigente y el precio del BTC del día. Los datos de la red vienen de mempool.space.
+          <p className="mt-4 max-w-[58ch] leading-relaxed">
+            Las cifras de minería son estimaciones con el hashprice vigente y el precio del BTC en vivo. Los datos de la red vienen de mempool.space y el
+            precio, de Coinbase y CoinGecko.
           </p>
         </div>
         <nav className="flex flex-col gap-2 md:items-end" aria-label="Legal">
