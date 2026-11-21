@@ -26,10 +26,12 @@
 
 | Plan | Hashrate | Precio por TH/s al mes | Mensualidad |
 | --- | --- | --- | --- |
-| Nonce | 100 TH/s | $ 4.600 | $ 460.000 |
-| Bloque | 250 TH/s | $ 4.450 | $ 1.112.500 |
-| Cadena | 500 TH/s | $ 4.300 | $ 2.150.000 |
-| Génesis | 1.000 TH/s | $ 4.200 | $ 4.200.000 |
+| Nonce | 100 TH/s | $ 2.600 | $ 260.000 |
+| Bloque | 250 TH/s | $ 2.500 | $ 625.000 |
+| Cadena | 500 TH/s | $ 2.400 | $ 1.200.000 |
+| Génesis | 1.000 TH/s | $ 2.300 | $ 2.300.000 |
+
+- Precios recalibrados al publicar (20 de noviembre de 2026), con el BTC real en unos 201,8 millones de pesos (US$ 58.900) y 42 sats por TH/s al día: el Nonce queda cerca del punto de equilibrio y los planes grandes, con descuento por volumen. Los primeros valores ($ 4.600 a $ 4.200) suponían un BTC de 420 millones y mostraban una pérdida de cerca del 40 % al precio real.
 
 - La mensualidad incluye la energía y el mantenimiento: no hay cobros diarios de electricidad.
 - El admin cambia los precios. Cada plan comprado guarda su precio por TH/s.
@@ -39,7 +41,7 @@
 
 - La minería es **24/7 y lineal**: `sats = TH/s × hashprice × días`. No hay curva de horario.
 - **Hashprice:** sats por TH/s al día. Lo fija el admin (valor inicial: 42). **Cada mes pagado guarda el hashprice vigente al confirmarse el pago**, y ese mes mina a ese valor aunque el admin lo cambie después.
-- La **rentabilidad** se calcula al precio de hoy del BTC (CoinGecko, con precio de referencia si no responde): valor de lo minado en pesos menos la parte proporcional de lo pagado. Siempre se muestra como estimada.
+- La **rentabilidad** se calcula al precio del BTC **en tiempo real**: el navegador recibe cada operación de BTC-USD del canal público de Coinbase (WebSocket) y la convierte a pesos con la tasa de CoinGecko. Mientras conecta, o si Coinbase no responde, usa el precio de CoinGecko (cada minuto). Con el precio de referencia (sin CoinGecko ni Coinbase) no se estima nada en pesos. Siempre se muestra como estimada.
 - **Saldo** = sats minados (redondeados hacia abajo) − retiros pagados − retiros en revisión.
 
 ### Granja

@@ -32,8 +32,8 @@ const actor = { id: "admin-cuadre", name: "Admin de prueba" };
 const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "eco-hash S.A.S.", holderId: "901234567-1" };
 const ADDR = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
 const TXID = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16";
-const MONTH_180 = 460_000;
-const MONTH_360 = 1_112_500;
+const MONTH_NONCE = 260_000;
+const MONTH_BLOQUE = 625_000;
 /** Hoy: 10 de noviembre de 2026, 12:30 p. m. en Colombia. */
 const NOW = bogotaMs(2026, 11, 10, 12, 30);
 let doubleId = "";
@@ -209,7 +209,7 @@ describe("el recaudo", () => {
   it("es el mismo en el Resumen, en Pagos y en Análisis, y solo cuenta pagos confirmados", async () => {
     // c1 mes 1 y mes 2, c2 (Bloque), c6 y el primer pago de c3. No cuentan: la devolución de c4,
     // el pago doble de c3 ni la transferencia de c5 que nadie ha confirmado.
-    const expected = 4 * MONTH_180 + MONTH_360;
+    const expected = 4 * MONTH_NONCE + MONTH_BLOQUE;
     expect(await confirmedPlanPayments()).toEqual({ cop: expected, n: 5 });
     expect((await admin.adminOverview()).collectedCop).toBe(expected);
     expect((await payments.paymentSummary(NOW)).totalCop).toBe(expected);
@@ -220,10 +220,10 @@ describe("el recaudo", () => {
     const { methods, totals } = await analytics.businessAnalytics(NOW);
     const by = Object.fromEntries(methods.map((m) => [m.method, { cop: m.cop, payments: m.payments }]));
     expect(by).toEqual({
-      transferencia: { cop: MONTH_360, payments: 1 },
-      manual: { cop: 2 * MONTH_180, payments: 2 },
-      demo: { cop: MONTH_180, payments: 1 },
-      mercadopago: { cop: MONTH_180, payments: 1 },
+      transferencia: { cop: MONTH_BLOQUE, payments: 1 },
+      manual: { cop: 2 * MONTH_NONCE, payments: 2 },
+      demo: { cop: MONTH_NONCE, payments: 1 },
+      mercadopago: { cop: MONTH_NONCE, payments: 1 },
     });
     expect(methods.reduce((s, m) => s + m.cop, 0)).toBe(totals.collectedCop);
   });
@@ -231,16 +231,16 @@ describe("el recaudo", () => {
   it("cada pago cuenta en el mes de Colombia en que se confirmó, también a las 10 p. m. del último día", async () => {
     const { months } = await analytics.businessAnalytics(NOW);
     const by = Object.fromEntries(months.map((m) => [m.month, { cop: m.collectedCop, payments: m.payments }]));
-    expect(by["2026-09"]).toEqual({ cop: MONTH_180, payments: 1 });
-    expect(by["2026-10"]).toEqual({ cop: MONTH_180 + MONTH_360, payments: 2 });
-    expect(by["2026-11"]).toEqual({ cop: 2 * MONTH_180, payments: 2 });
+    expect(by["2026-09"]).toEqual({ cop: MONTH_NONCE, payments: 1 });
+    expect(by["2026-10"]).toEqual({ cop: MONTH_NONCE + MONTH_BLOQUE, payments: 2 });
+    expect(by["2026-11"]).toEqual({ cop: 2 * MONTH_NONCE, payments: 2 });
     const overview = await admin.adminOverview();
     expect(overview.monthCollectedCop).toBe(by["2026-11"].cop);
     expect(overview.previousMonthCollectedCop).toBe(by["2026-10"].cop);
   });
 
   it("«Recaudado hoy» empieza a la medianoche de Colombia: el pago de las 11 p. m. de ayer no cuenta", async () => {
-    expect((await payments.paymentSummary(NOW)).todayCop).toBe(MONTH_180);
+    expect((await payments.paymentSummary(NOW)).todayCop).toBe(MONTH_NONCE);
   });
 
   it("el pago doble queda por reembolsar; al marcarlo reembolsado sale de lo pendiente y nunca cuenta como recaudo", async () => {

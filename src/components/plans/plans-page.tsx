@@ -1,7 +1,7 @@
 "use client";
 import { PLAN_MONTHS } from "@/config/plans";
 import { useCatalog } from "@/lib/client/use-catalog";
-import { useNetwork } from "@/lib/client/use-network";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { DAYS_PER_MONTH } from "@/lib/mining/plan-math";
 import { formatHashprice, formatHashrate, formatPct } from "@/lib/format";
 import { Topbar } from "@/components/panel/shell";
@@ -13,7 +13,7 @@ import { PlanRow } from "./plan-row";
 /** Comprar un plan y pagar los meses de los planes que ya se tienen. */
 export function PlansPage() {
   const { catalog, loaded, error, reload } = useCatalog();
-  const { data: net } = useNetwork();
+  const btcCop = useBtcCop();
   const { data, now } = usePortfolio();
   const subs = data?.subscriptions ?? [];
   const payable = subs.filter((s) => ["activa", "en_pausa", "en_revision"].includes(s.state));
@@ -54,7 +54,7 @@ export function PlansPage() {
             </button>
           </>
         ) : (
-          <PlanCatalog catalog={catalog} btcCop={net?.btc.cop ?? null} />
+          <PlanCatalog catalog={catalog} btcCop={btcCop} />
         )}
       </section>
     </>

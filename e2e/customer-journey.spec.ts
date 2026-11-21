@@ -28,7 +28,7 @@ test("la portada lleva a los planes con su mensualidad, sus sats y el enlace de 
   const plans = page.getByRole("region", { name: /Elige cuánto hashrate quieres/i });
   const nonce = plans.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^Plan Nonce$/ }) });
   await expect(nonce).toContainText("100 TH/s");
-  await expect(nonce).toContainText("460.000");
+  await expect(nonce).toContainText("260.000");
   await expect(nonce).toContainText("126.000 sats");
   await expect(nonce.getByRole("link", { name: "Elegir Nonce" })).toHaveAttribute("href", "/comprar?plan=h100");
   await expect(plans.getByRole("listitem")).toHaveCount(4);
@@ -62,7 +62,7 @@ test("el resultado muestra el comprobante solo cuando se confirma el pago", asyn
       json: {
         order: {
           id: ref,
-          amountCop: 460_000,
+          amountCop: 260_000,
           hashrateTh: 100,
           periodIndex: 2,
           method: "mercadopago",
@@ -116,7 +116,7 @@ test("plan → ingreso → datos personales → resumen → pago de prueba → p
   await page.getByRole("checkbox", { name: /Acepto los/i }).press("Space");
   await page.getByRole("button", { name: /Guardar y continuar al resumen/i }).click();
   await expect(page.getByRole("heading", { name: /Así es tu plan/i })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Resumen del plan" })).toContainText("460.000");
+  await expect(page.getByRole("complementary", { name: "Resumen del plan" })).toContainText("260.000");
   const breakdown = page.getByRole("region", { name: "Mensualidad y minería estimada" });
   await expect(breakdown).toContainText("126.000 sats");
   await expect(breakdown).toContainText("100 TH/s × 42 sats/TH/día × 30 días");

@@ -1,7 +1,7 @@
 "use client";
 import { PLAN_MONTHS } from "@/config/plans";
 import { useCatalog } from "@/lib/client/use-catalog";
-import { useNetwork } from "@/lib/client/use-network";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { formatHashprice } from "@/lib/format";
 import { ErrorNote } from "@/components/ui/field";
 import { PlanCatalog } from "@/components/plans/plan-catalog";
@@ -9,8 +9,7 @@ import { PlanCatalog } from "@/components/plans/plan-catalog";
 /** Los planes, con sus precios vigentes y el hashprice de hoy. Para comprar hay que ingresar. */
 export function PlansSection() {
   const { catalog, loaded, error, reload } = useCatalog();
-  const { data } = useNetwork();
-  const btcCop = data?.btc.cop ?? null;
+  const btcCop = useBtcCop();
   return (
     <section id="planes" aria-labelledby="planes-titulo" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 sm:px-8">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[1fr_minmax(0,46ch)] lg:items-end">

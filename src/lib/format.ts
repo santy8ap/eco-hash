@@ -61,12 +61,13 @@ export function formatTh(th: number) {
 
 /** Hashrate con la unidad que le queda mejor: 250 TH/s, 30 PH/s, 850 EH/s, 1,2 ZH/s. */
 export function formatHashrate(th: number) {
-  const units: [number, string][] = [
-    [1e9, "ZH/s"],
-    [1e6, "EH/s"],
-    [1e3, "PH/s"],
+  // ZH/s con dos decimales: la red ronda 1 ZH/s y con uno solo no se notaría cómo cambia.
+  const units: [number, string, number][] = [
+    [1e9, "ZH/s", 2],
+    [1e6, "EH/s", 1],
+    [1e3, "PH/s", 1],
   ];
-  for (const [size, unit] of units) if (Math.abs(th) >= size) return `${fmt(0, 1).format(th / size)} ${unit}`;
+  for (const [size, unit, decimals] of units) if (Math.abs(th) >= size) return `${fmt(0, decimals).format(th / size)} ${unit}`;
   return formatTh(th);
 }
 

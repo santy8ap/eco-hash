@@ -1,5 +1,5 @@
 "use client";
-import { useNetwork } from "@/lib/client/use-network";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { formatBtc, formatCop, formatHashprice, formatPct, formatSats, formatTh } from "@/lib/format";
 import { DAYS_PER_MONTH, estimateReturn, planEconomics } from "@/lib/mining/plan-math";
 
@@ -14,8 +14,8 @@ export interface PriceBreakdownProps {
 /** Lo que se paga y lo que se estima minar en el mes, con su valor al precio del BTC de hoy. */
 export function PriceBreakdown({ hashrateTh, months, priceCopPerThMonth, satsPerThDay }: PriceBreakdownProps) {
   const econ = planEconomics({ hashrateTh, priceCopPerThMonth }, satsPerThDay, months);
-  const { data } = useNetwork();
-  const est = data ? estimateReturn(econ, data.btc.cop) : null;
+  const btcCop = useBtcCop();
+  const est = btcCop ? estimateReturn(econ, btcCop) : null;
   return (
     <section aria-label="Mensualidad y minería estimada" className="mt-7">
       <dl className="grid gap-3 sm:grid-cols-2">
@@ -38,10 +38,10 @@ export function PriceBreakdown({ hashrateTh, months, priceCopPerThMonth, satsPer
           </dd>
         </div>
       </dl>
-      {est && data && (
+      {est && btcCop && (
         <div className="panel mt-3 flex flex-wrap items-end justify-between gap-3 p-5">
           <div>
-            <p className="cap">Al precio del BTC de hoy ({formatCop(data.btc.cop)})</p>
+            <p className="cap">Al precio del BTC de este momento ({formatCop(btcCop)})</p>
             <p className="num mt-2 text-xl">
               {formatCop(est.monthlyValueCop)} al mes{" "}
               <span className={est.profitPct >= 0 ? "text-jade-text" : "text-coral"}>

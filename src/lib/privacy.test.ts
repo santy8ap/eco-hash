@@ -50,8 +50,8 @@ describe("descargar mis datos", () => {
     expect(text).not.toContain("token-de-sesion-d1");
     const withPlan = await privacy.exportPersonalData("d2");
     expect(withPlan.planes).toHaveLength(1);
-    expect(withPlan.movimientos[0]).toMatchObject({ tipo: "pago de un mes", montoCop: 460_000, hashrateThS: 100 });
-    expect(withPlan.planes[0]).toMatchObject({ hashrateThS: 100, precioCopPorThAlMes: 4600 });
+    expect(withPlan.movimientos[0]).toMatchObject({ tipo: "pago de un mes", montoCop: 260_000, hashrateThS: 100 });
+    expect(withPlan.planes[0]).toMatchObject({ hashrateThS: 100, precioCopPorThAlMes: 2600 });
   });
 
   it("una cuenta que no existe no se exporta", async () => {

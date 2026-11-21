@@ -47,18 +47,18 @@ describe("minería y saldo de un plan", () => {
   it("recién pagado: el plan está activo, guarda su hashprice y todavía no ha minado", async () => {
     const p = await portfolio.getPortfolio("c1");
     expect(p.subscriptions).toHaveLength(1);
-    expect(p.subscriptions[0]).toMatchObject({ planName: "Génesis", state: "activa", paidMonths: 1, months: 3, monthlyCop: 4_200_000, hashrateTh: 1000, priceCopPerThMonth: 4200 });
+    expect(p.subscriptions[0]).toMatchObject({ planName: "Génesis", state: "activa", paidMonths: 1, months: 3, monthlyCop: 2_300_000, hashrateTh: 1000, priceCopPerThMonth: 2300 });
     expect(p.subscriptions[0].periods[0].satsPerThDay).toBe(42);
     expect(p.subscriptions[0].paidUntil).toBe(T0 + 30 * DAY_MS);
     expect(p).toMatchObject({ minedSats: 0, balanceSats: 0, activeTh: 1000, dailySats: 42_000 });
-    expect(p.transactions[0]).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "demo", amountCop: 4_200_000, hashrateTh: 1000, periodIndex: 1 });
+    expect(p.transactions[0]).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "demo", amountCop: 2_300_000, hashrateTh: 1000, periodIndex: 1 });
   });
 
   it("diez días después: 420.000 sats minados, día y noche, con su costo proporcional", async () => {
     vi.setSystemTime(T0 + 10 * DAY_MS);
     const p = await portfolio.getPortfolio("c1");
     expect(p.minedSats).toBeCloseTo(420_000, 6);
-    expect(p.costCop).toBeCloseTo(1_400_000, 4);
+    expect(p.costCop).toBeCloseTo(2_300_000 / 3, 4);
     // A las 12:30 va el 52 % del día: 12,5 de 24 horas.
     expect(p.todaySats).toBeCloseTo(21_875, 6);
     expect(p.balanceSats).toBe(420_000);

@@ -6,8 +6,10 @@ import { useTransition } from "react";
 import { signOut } from "@/app/ingresar/actions";
 import { BRAND } from "@/config/brand";
 import { useAppConfig } from "@/lib/client/use-app-config";
+import { useBtcPrice } from "@/lib/client/use-btc-price";
 import { useNetwork } from "@/lib/client/use-network";
-import { formatCopCompact, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
+import { LivePrice } from "@/components/ui/live-price";
 import { Logo } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeSelector } from "@/components/ui/theme-selector";
@@ -144,10 +146,11 @@ export function TestModeBar() {
   );
 }
 
-/** La red Bitcoin en una línea: el último bloque y el precio del BTC. */
+/** La red Bitcoin en una línea: el último bloque y el precio del BTC en vivo. */
 export function NetworkTicker({ className = "" }: { className?: string }) {
   const { data } = useNetwork();
-  const reference = data?.network.source === "referencia";
+  const btc = useBtcPrice();
+  const reference = data?.network.source === "referencia" || Boolean(btc?.reference);
   return (
     <p className={`flex items-center gap-3 text-sm text-mute ${className}`} aria-label="Red Bitcoin">
       <span className="live-dot" data-tone={!data ? "off" : reference ? "wait" : undefined} />
@@ -155,7 +158,7 @@ export function NetworkTicker({ className = "" }: { className?: string }) {
         Bloque <span className="num text-ink">{data ? formatNumber(data.network.height) : "…"}</span>
       </span>
       <span className="hidden sm:inline">
-        BTC <span className="num text-ink">{data ? formatCopCompact(data.btc.cop) : "…"}</span>
+        BTC <span className="num text-ink">{btc ? <LivePrice price={btc} /> : "…"}</span>
       </span>
       {reference && <span className="text-xs">(referencia)</span>}
     </p>

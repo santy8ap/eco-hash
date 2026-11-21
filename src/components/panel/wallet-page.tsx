@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useNetwork } from "@/lib/client/use-network";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { formatBtc, formatCop, formatNumber, formatSats } from "@/lib/format";
 import { useProfile } from "@/components/profile/profile-form";
 import { ErrorNote } from "@/components/ui/field";
@@ -12,10 +12,9 @@ import { WithdrawDialog } from "./withdraw-dialog";
 /** Saldo en sats, retiros a una dirección Bitcoin e historial de pagos. */
 export function WalletPage() {
   const { data, error, totals, balanceSats } = usePortfolio();
-  const { data: net } = useNetwork();
   const profile = useProfile();
   const [withdrawing, setWithdrawing] = useState(false);
-  const btcCop = net?.btc.cop ?? null;
+  const btcCop = useBtcCop();
 
   if (!data || !totals) {
     return (

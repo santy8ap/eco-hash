@@ -8,6 +8,8 @@ test("administración sin PIN: el propietario entra con su cuenta, recorre todo 
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
+  // El precio en vivo de Coinbase, simulado: la prueba no depende de un servicio externo (ni de que la red lo deje pasar).
+  await page.routeWebSocket(/ws-feed\.exchange\.coinbase\.com/, () => {});
 
   // Entra como administrador sin PIN: en este ambiente la cuenta de pruebas es propietaria (ADMIN_EMAILS).
   await page.goto("/ingresar?rol=admin");

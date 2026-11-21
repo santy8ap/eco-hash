@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PLAN_MONTHS } from "@/config/plans";
 import { downloadCsv } from "@/lib/csv";
 import { isoColombiaDate } from "@/lib/history-filters";
-import { useNetwork } from "@/lib/client/use-network";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { satsPerSecond } from "@/lib/mining/plan-math";
 import { dailyReturns } from "@/lib/mining/summary";
 import { formatBtc, formatCop, formatDateTime, formatNumber, formatPct, formatSats, formatTh } from "@/lib/format";
@@ -36,10 +36,9 @@ export function Overview() {
   const profile = useProfile();
   // Cada 200 ms: el contador de sats se mueve como un odómetro.
   const { data, error, now, totals, balanceSats } = usePortfolio(200);
-  const { data: net } = useNetwork();
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(7);
   const name = profile.data?.profile?.fullName?.split(" ")[0] || user.name.split(" ")[0];
-  const btcCop = net?.btc.cop ?? null;
+  const btcCop = useBtcCop();
 
   if (!data || !totals) {
     return (

@@ -39,7 +39,7 @@
 
 ## Preguntas probables
 
-**¿Los números son reales?** Los de la red Bitcoin sí (mempool.space y CoinGecko). Los de cada cliente salen de la fórmula TH/s × hashprice × tiempo, con el hashprice que fija cada mes.
+**¿Los números son reales?** Los de la red Bitcoin sí (mempool.space), y el precio del BTC se mueve en vivo con cada operación de Coinbase. Los de cada cliente salen de la fórmula TH/s × hashprice × tiempo, con el hashprice que fija cada mes.
 
 **¿Cómo gana eco-hash?** Con la diferencia entre la mensualidad y el costo real de minar ese hashrate (energía, equipos y operación).
 

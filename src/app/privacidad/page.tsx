@@ -123,8 +123,13 @@ const SECTIONS: LegalSection[] = [
             Resend, para enviarte por correo los avisos de tus pagos, retiros y mensualidades, y para los avisos internos a nuestro equipo. Los avisos a nuestro equipo llevan tu nombre, los
             montos y las referencias de cada operación (y, si pides eliminar tu cuenta, el motivo que escribas), pero no tu documento ni tus números de cuenta.
           </li>
-          <li>Los bancos por donde recibimos transferencias y pagamos retiros, y las redes blockchain por donde se paga con cripto.</li>
+          <li>Los bancos por donde recibimos transferencias, y las redes blockchain por donde se paga con cripto y se envían los retiros en BTC.</li>
         </ul>
+        <p>
+          Para mostrarte el precio del BTC en tiempo real, tu navegador se conecta directamente al canal público de precios de Coinbase. Coinbase ve tu
+          dirección IP, como cualquier sitio al que se conecta tu navegador, pero no le enviamos ningún dato tuyo. Los datos de la red Bitcoin
+          (mempool.space) y el precio de referencia (CoinGecko) los consultan nuestros servidores, no tu navegador.
+        </p>
         <p>
           Estos proveedores pueden guardar información fuera de Colombia, por ejemplo en Estados Unidos. También entregamos los datos a las autoridades cuando la ley lo exige.
         </p>

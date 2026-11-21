@@ -120,8 +120,8 @@ function notification(paymentId: number | string, secret = SECRET) {
   };
 }
 
-/** Pago mensual del Nonce: 100 TH/s × $ 4.600. */
-const MONTH_180 = 460_000;
+/** Pago mensual del Nonce: 100 TH/s × $ 2.600. */
+const MONTH_NONCE = 260_000;
 
 async function periodsOf(subscriptionId: string | null) {
   return dbMod.db
@@ -172,10 +172,10 @@ describe("orden de un mes con Mercado Pago", () => {
       status: "pendiente",
       method: "mercadopago",
       kind: "plan_mes",
-      amountCop: MONTH_180,
+      amountCop: MONTH_NONCE,
       hashrateTh: 100,
       periodIndex: 1,
-      expectedAmount: String(MONTH_180),
+      expectedAmount: String(MONTH_NONCE),
     });
     expect(row.subscriptionId).toMatch(/^PLN-[0-9A-F]{8}$/);
     const pref = mp.preferences.at(-1)!.body as {
@@ -186,7 +186,7 @@ describe("orden de un mes con Mercado Pago", () => {
     expect(pref.external_reference).toBe(o.orderId);
     expect(pref.items[0]).toMatchObject({
       title: "Plan Nonce (100 TH/s) · mes 1 de 3 · eco-hash",
-      unit_price: MONTH_180,
+      unit_price: MONTH_NONCE,
       currency_id: "COP",
     });
     expect(pref.back_urls.success).toMatch(
@@ -267,16 +267,16 @@ describe("topes de Mercado Pago", () => {
     expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm"]);
   });
 
-  it("un mes que pasa el tope de las tarjetas (el Génesis, $ 4,2 millones, con un tope de $ 3 millones) solo deja PSE", async () => {
+  it("un mes que pasa el tope de las tarjetas (el Génesis, $ 2,3 millones, con un tope de $ 2 millones) solo deja PSE", async () => {
     await createUser("tope-2");
     mp.methods = [
       { id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 340_000_000 },
-      { id: "visa", payment_type_id: "credit_card", status: "active", max_allowed_amount: 3_000_000 },
+      { id: "visa", payment_type_id: "credit_card", status: "active", max_allowed_amount: 2_000_000 },
     ];
     delete limitsCache.__echMpLimits;
     try {
       const o = await order("tope-2", { planId: "h1000" });
-      expect(o.amountCop).toBe(4_200_000);
+      expect(o.amountCop).toBe(2_300_000);
       const body = mp.preferences.at(-1)!.body as { payment_methods: { excluded_payment_types: { id: string }[] } };
       expect(body.payment_methods.excluded_payment_types.map((t) => t.id)).toEqual(["ticket", "atm", "credit_card", "debit_card", "prepaid_card"]);
     } finally {
@@ -289,10 +289,10 @@ describe("topes de Mercado Pago", () => {
     await createUser("tope-3");
     const before = mp.preferences.length;
     const rows = async () => (await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "tope-3"))).length;
-    mp.methods = [{ id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 400_000 }];
+    mp.methods = [{ id: "pse", payment_type_id: "bank_transfer", status: "active", max_allowed_amount: 200_000 }];
     delete limitsCache.__echMpLimits;
     try {
-      await expect(order("tope-3", { planId: "h100" })).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/Mercado Pago recibe hasta \$ 400\.000/) });
+      await expect(order("tope-3", { planId: "h100" })).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/Mercado Pago recibe hasta \$ 200\.000/) });
       expect(mp.preferences.length).toBe(before);
       expect(await rows()).toBe(0);
     } finally {
@@ -305,7 +305,7 @@ describe("topes de Mercado Pago", () => {
 describe("confirmación del pago", () => {
   it("un pago aprobado activa el mes una sola vez, aunque la notificación y la consulta lleguen a la vez", async () => {
     const o = await order("u4");
-    const p = pay(o.orderId, MONTH_180, "approved");
+    const p = pay(o.orderId, MONTH_NONCE, "approved");
     const before = Date.now();
     await Promise.all([
       svc.handleMercadoPagoNotification(notification(p.id), deps),
@@ -327,7 +327,7 @@ describe("confirmación del pago", () => {
       idx: 1,
       hashrateTh: 100,
       satsPerThDay: 42,
-      amountCop: MONTH_180,
+      amountCop: MONTH_NONCE,
       txId: o.orderId,
     });
     expect(periods[0].startsAt).toBeGreaterThanOrEqual(before);
@@ -335,7 +335,7 @@ describe("confirmación del pago", () => {
     const [sub] = await plans.listSubscriptions("u4");
     expect(sub).toMatchObject({
       planId: "h100",
-      priceCopPerThMonth: 4600,
+      priceCopPerThMonth: 2600,
       hashrateTh: 100,
     });
     expect(plans.stateOf(sub, Date.now())).toBe("activa");
@@ -343,7 +343,7 @@ describe("confirmación del pago", () => {
 
   it("un pago rechazado cierra la orden con el motivo y no activa nada", async () => {
     const o = await order("u5");
-    pay(o.orderId, MONTH_180, "rejected", {
+    pay(o.orderId, MONTH_NONCE, "rejected", {
       status_detail: "cc_rejected_insufficient_amount",
     });
     const r = await svc.syncMercadoPagoOrder({ orderId: o.orderId }, deps);
@@ -354,7 +354,7 @@ describe("confirmación del pago", () => {
 
   it("un PSE en proceso sigue esperando y se confirma cuando el banco aprueba", async () => {
     const o = await order("u6");
-    const p = pay(o.orderId, MONTH_180, "in_process", {
+    const p = pay(o.orderId, MONTH_NONCE, "in_process", {
       payment_type_id: "bank_transfer",
     });
     expect(
@@ -371,10 +371,10 @@ describe("confirmación del pago", () => {
 
   it("un intento rechazado seguido de uno aprobado confirma la orden", async () => {
     const o = await order("u7");
-    const rejected = pay(o.orderId, MONTH_180, "rejected");
+    const rejected = pay(o.orderId, MONTH_NONCE, "rejected");
     await svc.handleMercadoPagoNotification(notification(rejected.id), deps);
     expect((await orderRow(o.orderId)).status).toBe("fallida");
-    const approved = pay(o.orderId, MONTH_180, "approved");
+    const approved = pay(o.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(approved.id), deps);
     expect((await orderRow(o.orderId)).status).toBe("confirmada");
   });
@@ -391,7 +391,7 @@ describe("confirmación del pago", () => {
 
   it("rechaza una notificación con firma inválida o sin firma, sin tocar la orden", async () => {
     const o = await order("u9");
-    const p = pay(o.orderId, MONTH_180, "approved");
+    const p = pay(o.orderId, MONTH_NONCE, "approved");
     expect(
       (
         await svc.handleMercadoPagoNotification(
@@ -432,7 +432,7 @@ describe("confirmación del pago", () => {
 
   it("un aviso IPN antiguo (topic=payment, sin firma) se responde 200 y se ignora sin consultar la API", async () => {
     const o = await order("u9");
-    const p = pay(o.orderId, MONTH_180, "approved");
+    const p = pay(o.orderId, MONTH_NONCE, "approved");
     const calls: string[] = [];
     const spy = (async (input: RequestInfo | URL, init?: RequestInit) => {
       calls.push(String(input));
@@ -463,7 +463,7 @@ describe("confirmación del pago", () => {
 
   it("si un pago aprobado luego se devuelve, la orden queda marcada para revisión", async () => {
     const o = await order("u10");
-    const p = pay(o.orderId, MONTH_180, "approved");
+    const p = pay(o.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(p.id), deps);
     mp.payments.set(String(p.id), { ...p, status: "refunded" });
     await svc.handleMercadoPagoNotification(notification(p.id), deps);
@@ -514,7 +514,7 @@ describe("confirmación del pago", () => {
   it("con cobros reales, un pago de una cuenta de prueba no activa el plan", async () => {
     vi.stubEnv("DEMO_MODE", "false");
     const o = await order("u11");
-    pay(o.orderId, MONTH_180, "approved", { live_mode: false });
+    pay(o.orderId, MONTH_NONCE, "approved", { live_mode: false });
     const r = await svc.syncMercadoPagoOrder({ orderId: o.orderId }, deps);
     expect(r?.order.status).toBe("fallida");
     expect(r?.order.note).toMatch(/pago de prueba/i);
@@ -524,9 +524,9 @@ describe("confirmación del pago", () => {
   it("otro intento aprobado no oculta una devolución del pago que activó el mes", async () => {
     await createUser("refund-with-duplicate");
     const o = await order("refund-with-duplicate");
-    const first = pay(o.orderId, MONTH_180, "approved");
+    const first = pay(o.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(first.id), deps);
-    const second = pay(o.orderId, MONTH_180, "approved");
+    const second = pay(o.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(second.id), deps);
     mp.payments.set(String(first.id), { ...first, status: "charged_back" });
     await svc.handleMercadoPagoNotification(notification(first.id), deps);
@@ -549,7 +549,7 @@ describe("confirmación del pago", () => {
 describe("meses siguientes y capacidad de la granja", () => {
   it("el mes 2 se paga con el plan del usuario y empieza cuando termina el mes 1", async () => {
     const first = await order("u12");
-    const p1 = pay(first.orderId, MONTH_180, "approved");
+    const p1 = pay(first.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(p1.id), deps);
     const [sub] = await plans.listSubscriptions("u12");
 
@@ -557,9 +557,9 @@ describe("meses siguientes y capacidad de la granja", () => {
     expect(await orderRow(second.orderId)).toMatchObject({
       subscriptionId: sub.id,
       periodIndex: 2,
-      amountCop: MONTH_180,
+      amountCop: MONTH_NONCE,
     });
-    const p2 = pay(second.orderId, MONTH_180, "approved");
+    const p2 = pay(second.orderId, MONTH_NONCE, "approved");
     await svc.handleMercadoPagoNotification(notification(p2.id), deps);
     const periods = (await periodsOf(sub.id)).sort((a, b) => a.idx - b.idx);
     expect(periods.map((p) => p.idx)).toEqual([1, 2]);
@@ -570,11 +570,11 @@ describe("meses siguientes y capacidad de la granja", () => {
     const first = await order("u13");
     const again = await order("u13");
     await svc.handleMercadoPagoNotification(
-      notification(pay(first.orderId, MONTH_180, "approved").id),
+      notification(pay(first.orderId, MONTH_NONCE, "approved").id),
       deps,
     );
     await svc.handleMercadoPagoNotification(
-      notification(pay(again.orderId, MONTH_180, "approved").id),
+      notification(pay(again.orderId, MONTH_NONCE, "approved").id),
       deps,
     );
     expect((await orderRow(first.orderId)).status).toBe("confirmada");
@@ -602,7 +602,7 @@ describe("meses siguientes y capacidad de la granja", () => {
     it("si el pago llega aprobado después, el mes se activa", async () => {
       const o = await order("u17");
       await abandon("u17", o.orderId);
-      const approved = pay(o.orderId, MONTH_180, "approved");
+      const approved = pay(o.orderId, MONTH_NONCE, "approved");
       await svc.handleMercadoPagoNotification(notification(approved.id), deps);
       const row = await orderRow(o.orderId);
       expect(row).toMatchObject({ status: "confirmada", providerId: String(approved.id), note: null });
@@ -612,7 +612,7 @@ describe("meses siguientes y capacidad de la granja", () => {
     it("si aparece un pago en proceso, la orden vuelve a quedar abierta para seguirla consultando", async () => {
       const o = await order("u18");
       await abandon("u18", o.orderId);
-      const pending = pay(o.orderId, MONTH_180, "in_process");
+      const pending = pay(o.orderId, MONTH_NONCE, "in_process");
       await svc.syncMercadoPagoOrder({ orderId: o.orderId }, deps);
       expect(await orderRow(o.orderId)).toMatchObject({ status: "pendiente", providerId: String(pending.id), providerStatus: "in_process", note: null });
       // Y cuando el banco aprueba, se activa como cualquier otra.
@@ -632,7 +632,7 @@ describe("meses siguientes y capacidad de la granja", () => {
     it("un intento rechazado no la reabre", async () => {
       const o = await order("u19");
       await abandon("u19", o.orderId);
-      const rejected = pay(o.orderId, MONTH_180, "rejected");
+      const rejected = pay(o.orderId, MONTH_NONCE, "rejected");
       await svc.handleMercadoPagoNotification(notification(rejected.id), deps);
       expect((await orderRow(o.orderId)).status).toBe("cancelada");
     });
@@ -647,11 +647,11 @@ describe("meses siguientes y capacidad de la granja", () => {
     const a = await order("u15");
     const b = await order("u16");
     await svc.handleMercadoPagoNotification(
-      notification(pay(a.orderId, MONTH_180, "approved").id),
+      notification(pay(a.orderId, MONTH_NONCE, "approved").id),
       deps,
     );
     await svc.handleMercadoPagoNotification(
-      notification(pay(b.orderId, MONTH_180, "approved").id),
+      notification(pay(b.orderId, MONTH_NONCE, "approved").id),
       deps,
     );
     expect((await orderRow(a.orderId)).status).toBe("confirmada");

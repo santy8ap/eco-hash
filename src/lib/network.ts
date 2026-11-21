@@ -44,8 +44,8 @@ export function networkHashpriceSats(hashrateHs: number, subsidyBtc = SUBSIDY_BT
   return (BLOCKS_PER_DAY * (subsidyBtc + feesBtcPerBlock) * 100_000_000) / networkTh;
 }
 
-/** Referencia: altura 974.000 el 20 de noviembre de 2026 a mediodía UTC, 1,1 ZH/s de hashrate. */
-const REF = { height: 974_000, at: Date.UTC(2026, 10, 20, 12), hashrateHs: 1.1e21 };
+/** Referencia tomada de mempool.space: el bloque 976.796, minado el 20 de noviembre de 2026 a las 23:27 UTC, con 1,04 ZH/s. */
+const REF = { height: 976_796, at: Date.UTC(2026, 10, 20, 23, 27, 7), hashrateHs: 1.04e21 };
 
 function referenceStats(now: number): NetworkStats {
   const height = REF.height + Math.floor((now - REF.at) / BLOCK_MS);

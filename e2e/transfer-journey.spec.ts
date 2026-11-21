@@ -22,7 +22,8 @@ test.afterEach(async () => {
 /** Datos personales de la cuenta de pruebas: los confirma si ya están guardados o los llena si faltan. */
 async function completeProfileIfAsked(page: Page) {
   const summary = page.getByRole("heading", { name: /Así es tu plan/i });
-  const saved = page.getByRole("button", { name: /Continuar al resumen/i });
+  // Exacto: con el perfil vacío también se ve «Guardar y continuar al resumen».
+  const saved = page.getByRole("button", { name: "Continuar al resumen", exact: true });
   const name = page.getByLabel("Nombre completo", { exact: true });
   // El perfil se carga después del título: se espera a que se vea una de las tres pantallas.
   await expect(summary.or(saved).or(name)).toBeVisible();
@@ -70,7 +71,7 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   await page.getByRole("button", { name: /Elegir medio de pago/i }).click();
   await page.getByText("Transferencia bancaria", { exact: true }).click();
   await expect(page.getByRole("button", { name: /Copiar número de cuenta: 12345678901/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Copiar valor exacto: .*1\.112\.500/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Copiar valor exacto: .*625\.000/ })).toBeVisible();
   const referenceButton = page.getByRole("button", { name: /Copiar referencia: PLN-[0-9A-F]{8}-M1/ });
   await expect(referenceButton).toBeVisible();
   const reference = (await referenceButton.textContent())!.match(/PLN-[0-9A-F]{8}-M1/)![0];
@@ -82,7 +83,7 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   const response = await reported;
   expect(response.status()).toBe(201);
   const { order } = await response.json();
-  expect(order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: 1_112_500, hashrateTh: 250, txHash: "COMP-778899" });
+  expect(order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: 625_000, hashrateTh: 250, txHash: "COMP-778899" });
   await expect(page.getByText("Recibimos el aviso de tu transferencia.")).toBeVisible();
 
   // 3. El admin la encuentra en Pagos con la referencia y la confirma con la del banco.
@@ -118,9 +119,9 @@ test("transferencia: el admin publica la cuenta, el cliente reporta el pago y el
   const lines = reportCsv.trim().split("\r\n");
   expect(lines[0]).toContain("Hashrate vendido TH/s·mes");
   expect(lines).toHaveLength(13);
-  // El mes actual incluye la transferencia confirmada (plan Bloque, $ 1.112.500).
+  // El mes actual incluye la transferencia confirmada (plan Bloque, $ 625.000).
   const current = lines[12].split(";").map((c) => c.replaceAll('"', ""));
-  expect(Number(current[1])).toBeGreaterThanOrEqual(1_112_500);
+  expect(Number(current[1])).toBeGreaterThanOrEqual(625_000);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: /Para atender/ })).toBeVisible();
   await expect(page.getByText("Transferencia por confirmar", { exact: true })).toHaveCount(0);

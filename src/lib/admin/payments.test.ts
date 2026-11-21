@@ -26,7 +26,7 @@ let dbMod: typeof import("@/lib/db");
 let schema: typeof import("@/lib/db/schema");
 let drizzle: typeof import("drizzle-orm");
 const actor = { id: "admin-test", name: "Admin de prueba" };
-const MONTH_180 = 460_000;
+const MONTH_NONCE = 260_000;
 
 /** Mercado Pago falso: preferencias y pagos buscables por referencia. */
 const mpPayments: MpPayment[] = [];
@@ -104,14 +104,14 @@ describe("sección Pagos del admin", () => {
     const o = await mp.createMercadoPagoOrder({ userId: "p1", email: "a@b.co", planId: "h100" }, { fetch: mpFetch });
     const list = await payments.listPayments({ method: "mercadopago" });
     const row = list.find((p) => p.id === o.orderId);
-    expect(row).toMatchObject({ method: "mercadopago", status: "pendiente", companyName: "Empresa p1", planName: "Nonce", periodIndex: 1, amountCop: MONTH_180 });
+    expect(row).toMatchObject({ method: "mercadopago", status: "pendiente", companyName: "Empresa p1", planName: "Nonce", periodIndex: 1, amountCop: MONTH_NONCE });
     expect(await payments.listPayments({ status: "confirmadas" })).toHaveLength(0);
   });
 
   it("re-verifica un pago de Mercado Pago buscándolo por la referencia de la orden", async () => {
     const o = await mp.createMercadoPagoOrder({ userId: "p2", email: "a@b.co", planId: "h100" }, { fetch: mpFetch });
     // El usuario pagó pero cerró la pestaña y la notificación nunca llegó.
-    mpPayments.push({ id: 777001, status: "approved", external_reference: o.orderId, transaction_amount: MONTH_180, currency_id: "COP", live_mode: true });
+    mpPayments.push({ id: 777001, status: "approved", external_reference: o.orderId, transaction_amount: MONTH_NONCE, currency_id: "COP", live_mode: true });
     const r = await payments.reverifyPayment(actor, o.orderId, { fetch: mpFetch });
     expect(r.status).toBe("confirmada");
     expect((await admin.listAudit(1))[0]).toMatchObject({ action: "reverificar_pago", targetUserId: "p2" });
@@ -144,15 +144,15 @@ describe("sección Pagos del admin", () => {
     const before = await payments.paymentSummary();
     await test.payWithTestPayment({ userId: "p5", planId: "h100" });
     // En pruebas, el número se mueve con lo que el administrador está probando.
-    expect((await payments.paymentSummary()).totalCop).toBe(before.totalCop + MONTH_180);
+    expect((await payments.paymentSummary()).totalCop).toBe(before.totalCop + MONTH_NONCE);
 
     vi.stubEnv("DEMO_MODE", "false");
     const real = await payments.paymentSummary();
     expect(real.totalCop).toBeLessThanOrEqual(before.totalCop);
     await admin.registerManualPayment(actor, { userId: "p5", planId: "h250", reference: "TRANSF-9001" });
     const after = await payments.paymentSummary();
-    expect(after.totalCop).toBe(real.totalCop + 1_112_500);
-    expect(after.todayCop).toBe(real.todayCop + 1_112_500);
+    expect(after.totalCop).toBe(real.totalCop + 625_000);
+    expect(after.todayCop).toBe(real.todayCop + 625_000);
   });
 
   it("un pago de prueba no se re-verifica con un proveedor", async () => {

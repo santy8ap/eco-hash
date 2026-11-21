@@ -22,6 +22,8 @@ describe("formatos de minería", () => {
     expect(formatHashrate(12_500)).toBe("12,5 PH/s");
     expect(formatHashrate(850_000_000)).toBe("850 EH/s");
     expect(formatHashrate(1_200_000_000)).toBe("1,2 ZH/s");
+    // La red ronda 1 ZH/s: con un solo decimal, 1.039 EH/s se vería como un «1 ZH/s» redondo.
+    expect(formatHashrate(1_039_104_264)).toBe("1,04 ZH/s");
   });
 
   it("hashprice en sats por TH/s al día", () => {

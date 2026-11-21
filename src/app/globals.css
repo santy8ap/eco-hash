@@ -374,6 +374,14 @@
     display: none;
   }
 
+  /* El precio del BTC en vivo: un destello verde si subió y coral si bajó, que se apaga en un segundo. */
+  .price-tick[data-dir="1"] {
+    animation: price-up 1.2s var(--ease-out-soft);
+  }
+  .price-tick[data-dir="-1"] {
+    animation: price-down 1.2s var(--ease-out-soft);
+  }
+
   .skeleton {
     border-radius: var(--radius-tile);
     background: color-mix(in srgb, var(--color-ink) 6%, transparent);
@@ -413,6 +421,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes price-up {
+  from {
+    color: var(--color-jade-text);
+  }
+}
+
+@keyframes price-down {
+  from {
+    color: var(--color-coral);
   }
 }
 

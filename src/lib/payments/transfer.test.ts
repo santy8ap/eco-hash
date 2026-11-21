@@ -14,7 +14,7 @@ let drizzle: typeof import("drizzle-orm");
 let payments: typeof import("@/lib/admin/payments");
 const admin = { id: "admin-1", name: "Admin de prueba" };
 const ACCOUNT = { bank: "Bancolombia", accountType: "corriente", accountNumber: "123-456789-01", holder: "eco-hash S.A.S.", holderId: "901234567-1" };
-const MONTH_180 = 460_000;
+const MONTH_NONCE = 260_000;
 
 afterEach(() => vi.stubEnv("DEMO_MODE", ""));
 
@@ -83,7 +83,7 @@ describe("la empresa ve los datos y reporta su transferencia", () => {
   it("ve la cuenta, el valor exacto y la referencia del plan y el mes, sin crear ninguna orden", async () => {
     const before = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "t1"));
     const info = await transfer.transferInstructions({ userId: "t1", planId: "h100" });
-    expect(info).toMatchObject({ amountCop: MONTH_180, periodIndex: 1, order: null, account: { bank: "Bancolombia", accountNumber: "12345678901" } });
+    expect(info).toMatchObject({ amountCop: MONTH_NONCE, periodIndex: 1, order: null, account: { bank: "Bancolombia", accountNumber: "12345678901" } });
     expect(info.reference).toMatch(/^PLN-[0-9A-F]{8}-M1$/);
     const after = await dbMod.db.select().from(schema.ledgerTx).where(drizzle.eq(schema.ledgerTx.userId, "t1"));
     expect(after).toHaveLength(before.length);
@@ -92,7 +92,7 @@ describe("la empresa ve los datos y reporta su transferencia", () => {
   it("al reportar, la orden queda por verificar con el monto del servidor y el comprobante, sin activar nada", async () => {
     const r = await transfer.reportTransfer({ userId: "t1", planId: "h100", receipt: " COMP-2001 " });
     expect(r.created).toBe(true);
-    expect(r.order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: MONTH_180, periodIndex: 1, txHash: "COMP-2001", providerStatus: transfer.REPORTED_STATUS });
+    expect(r.order).toMatchObject({ status: "verificando", method: "transferencia", amountCop: MONTH_NONCE, periodIndex: 1, txHash: "COMP-2001", providerStatus: transfer.REPORTED_STATUS });
     expect(await periodsOf(r.order.id)).toHaveLength(0);
     // La referencia que vio la empresa es la del plan y el mes de la orden.
     const info = await transfer.transferInstructions({ userId: "t1", planId: "h100" });
@@ -182,7 +182,7 @@ describe("el admin confirma o rechaza", () => {
     const before = await payments.paymentSummary();
     const { order } = await transfer.reportTransfer({ userId: "t2", planId: "h100", receipt: "COMP-6001" });
     await transfer.confirmTransfer(admin, order.id, "BANCO-REF-88001");
-    expect((await payments.paymentSummary()).totalCop).toBe(before.totalCop + MONTH_180);
+    expect((await payments.paymentSummary()).totalCop).toBe(before.totalCop + MONTH_NONCE);
   });
 });
 

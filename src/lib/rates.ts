@@ -16,7 +16,7 @@ export const REFERENCE_PRICES: Rates["prices"] = {
   USDT: { cop: 4000, usd: 1 },
   BNB: { cop: 2_800_000, usd: 700 },
   ETH: { cop: 14_000_000, usd: 3500 },
-  BTC: { cop: 420_000_000, usd: 105_000 },
+  BTC: { cop: 200_000_000, usd: 58_000 },
 };
 
 const IDS: Record<Asset, string> = { USDT: "tether", BNB: "binancecoin", ETH: "ethereum", BTC: "bitcoin" };

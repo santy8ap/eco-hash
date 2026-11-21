@@ -41,8 +41,8 @@ describe("comprobantes del titular", () => {
     const receipt = await receipts.receiptData("receipt-owner", orderId);
     expect(receipt).toMatchObject({
       holder: "Mariana Gómez Restrepo",
-      amountCop: 460000,
-      priceCopPerThMonth: 4600,
+      amountCop: 260000,
+      priceCopPerThMonth: 2600,
       hashrateTh: 100,
       satsPerThDay: 42,
       amountSats: null,
@@ -88,7 +88,7 @@ describe("comprobantes del titular", () => {
         userId: "receipt-owner",
         kind: "plan_mes",
         status: "pendiente",
-        amountCop: 460000,
+        amountCop: 260000,
         createdAt: Date.now(),
         method: "mercadopago",
       });

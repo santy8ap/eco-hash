@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type WebSocketRoute } from "@playwright/test";
 
 const HASH = "00000000000000000001a6f3c2be7d4598e0c1f2a3b4c5d6e7f8091a2b3c4d5e";
 
-function network(source: "mempool" | "referencia") {
+function network(source: "mempool" | "referencia", btcSource: "coingecko" | "referencia" = "coingecko") {
   const now = Date.now();
   return {
     network: {
@@ -16,7 +16,8 @@ function network(source: "mempool" | "referencia") {
       source,
       updatedAt: now,
     },
-    btc: { cop: 412_350_000, usd: 102_900, source: "coingecko", updatedAt: now },
+    // 4.000 pesos por dólar: así las cuentas del precio en vivo dan cifras redondas.
+    btc: { cop: 411_600_000, usd: 102_900, source: btcSource, updatedAt: now },
   };
 }
 
@@ -35,7 +36,7 @@ test("el bloque en vivo muestra la altura, el hash con sus ceros y lo que minar�
   await expect(block).toContainText(/Un plan Nonce \(100 TH\/s\) minó desde que abriste esta página/);
 
   const strip = page.getByRole("region", { name: "La red Bitcoin hoy" });
-  await expect(strip).toContainText("1,2 ZH/s");
+  await expect(strip).toContainText("1,18 ZH/s");
   await expect(strip).toContainText("+2,75 %");
 });
 
@@ -47,4 +48,53 @@ test("sin conexión con mempool.space se rotulan los valores de referencia y no 
   await expect(block).toContainText("altura estimada");
   await expect(block.getByText("El hash del bloque aparece cuando hay conexión con mempool.space.")).toBeVisible();
   await expect(block.getByRole("link", { name: "Ver en mempool.space" })).toHaveCount(0);
+});
+
+const COINBASE = /ws-feed\.exchange\.coinbase\.com/;
+const tickerMsg = (price: string) => JSON.stringify({ type: "ticker", product_id: "BTC-USD", price, time: new Date().toISOString() });
+
+test("el precio del BTC se mueve en vivo con cada operación de Coinbase, y vuelve al de CoinGecko si se cae", async ({ page }) => {
+  await page.route("**/api/network", (route) => route.fulfill({ json: network("mempool") }));
+  let feed: WebSocketRoute | undefined;
+  let subscribe: unknown;
+  await page.routeWebSocket(COINBASE, (ws) => {
+    feed = ws;
+    ws.onMessage((message) => (subscribe = JSON.parse(String(message))));
+  });
+  await page.goto("/");
+  const strip = page.getByRole("region", { name: "La red Bitcoin hoy" });
+  const price = strip.locator(".price-tick");
+  // Antes de la primera operación: el precio de /api/network.
+  await expect(price).toHaveText("$ 411.600.000");
+  await expect.poll(() => subscribe).toEqual({ type: "subscribe", product_ids: ["BTC-USD"], channels: ["ticker"] });
+
+  feed!.send(tickerMsg("103000.50"));
+  await expect(price).toHaveText("$ 412.002.000");
+  await expect(price).toHaveAttribute("data-dir", "0");
+  await expect(strip).toContainText("US$ 103.000,50");
+  await expect(strip).toContainText("en vivo");
+  // Los planes se estiman con el precio en vivo: 126.000 sats × $ 4.120,02 por cada 1.000 sats.
+  const plans = page.getByRole("region", { name: /Elige cuánto hashrate quieres/i });
+  const nonce = plans.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^Plan Nonce$/ }) });
+  await expect(nonce).toContainText("$ 519.123");
+
+  feed!.send(tickerMsg("102500"));
+  await expect(price).toHaveText("$ 410.000.000");
+  await expect(price).toHaveAttribute("data-dir", "-1");
+
+  await feed!.close();
+  await expect(price).toHaveText("$ 411.600.000");
+  await expect(strip).not.toContainText("en vivo");
+});
+
+test("con el precio de referencia no se estima nada en pesos", async ({ page }) => {
+  await page.route("**/api/network", (route) => route.fulfill({ json: network("mempool", "referencia") }));
+  await page.routeWebSocket(COINBASE, (ws) => void ws.close());
+  await page.goto("/");
+  const strip = page.getByRole("region", { name: "La red Bitcoin hoy" });
+  await expect(strip).toContainText("US$ 102.900, referencia");
+  const plans = page.getByRole("region", { name: /Elige cuánto hashrate quieres/i });
+  const nonce = plans.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /^Plan Nonce$/ }) });
+  await expect(nonce).toContainText("126.000 sats");
+  await expect(nonce).not.toContainText("sobre la mensualidad");
 });

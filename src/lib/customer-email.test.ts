@@ -95,7 +95,7 @@ describe("pagos", () => {
     const [email, ...rest] = to("m1");
     expect(rest).toHaveLength(0);
     expect(email).toMatchObject({ from: "eco-hash <avisos@eco-hash.co>", reply_to: "soporte@eco-hash.co" });
-    expect(email.subject).toBe(`[Pruebas] Confirmamos tu pago de ${formatCop(460_000)}`);
+    expect(email.subject).toBe(`[Pruebas] Confirmamos tu pago de ${formatCop(260_000)}`);
     expect(email.text).toMatch(/^Hola, Laura:/);
     expect(email.text).toMatch(/el mes 1 de tu plan/);
     expect(email.text).toMatch(/Ese mes tu hashrate mina del .+ al .+ con un hashprice de 42 sats\/TH\/día\./);
@@ -175,7 +175,7 @@ describe("recordatorios", () => {
     const first = await reminders.sendPlanReminders();
     expect(first.enviados).toBeGreaterThanOrEqual(2);
     expect(to("m5").map((s) => s.subject)).toEqual(["[Pruebas] Tu plan Nonce necesita el pago del mes 2"]);
-    expect(to("m5")[0].text).toContain(`Paga el mes 2 (${formatCop(460_000)}) antes de esa fecha para que tu plan siga minando sin pausa.`);
+    expect(to("m5")[0].text).toContain(`Paga el mes 2 (${formatCop(260_000)}) antes de esa fecha para que tu plan siga minando sin pausa.`);
     expect(to("m6").map((s) => s.subject)).toEqual(["[Pruebas] Tu plan Nonce está en pausa"]);
     expect(to("m6")[0].text).toMatch(/Puedes retomarlo hasta el /);
     expect(to("m6")[0].text).toMatch(/los sats que ya minó siguen en tu saldo/);
@@ -186,7 +186,7 @@ describe("recordatorios", () => {
 
   it("las reglas: avisa 5 días antes de la mensualidad, 7 antes de que termine el plan y no si ya lo renovó", () => {
     const now = Date.UTC(2026, 10, 13, 15);
-    const plan = { id: "PLN-1", planId: "h100", planName: "Nonce", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 460_000, graceEndsAt: null };
+    const plan = { id: "PLN-1", planId: "h100", planName: "Nonce", months: 3, paidMonths: 1, paidUntil: now + 6 * DAY, monthlyCop: 260_000, graceEndsAt: null };
     expect(reminders.reminderFor({ ...plan, state: "activa" }, now, false)).toBeNull();
     expect(reminders.reminderFor({ ...plan, state: "activa", paidUntil: now + 4 * DAY }, now, false)?.key).toBe("mensualidad:PLN-1:2");
     const ending = { ...plan, paidMonths: 3, state: "activa" as const, paidUntil: now + 6 * DAY };

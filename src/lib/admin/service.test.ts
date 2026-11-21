@@ -41,10 +41,10 @@ describe("pago manual (transferencia bancaria)", () => {
 
   it("activa el mes, queda como pago real y deja constancia en la bitácora", async () => {
     const tx = await admin.registerManualPayment(actor, { userId: "a1", planId: "h250", reference: "TRANSF-0001" });
-    expect(tx).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "manual", amountCop: 1_112_500, hashrateTh: 250, periodIndex: 1 });
+    expect(tx).toMatchObject({ kind: "plan_mes", status: "confirmada", method: "manual", amountCop: 625_000, hashrateTh: 250, periodIndex: 1 });
     const [sub] = await plans.listSubscriptions("a1");
-    expect(sub).toMatchObject({ planId: "h250", hashrateTh: 250, priceCopPerThMonth: 4450 });
-    expect(sub.periods[0]).toMatchObject({ hashrateTh: 250, satsPerThDay: 42, amountCop: 1_112_500 });
+    expect(sub).toMatchObject({ planId: "h250", hashrateTh: 250, priceCopPerThMonth: 2500 });
+    expect(sub.periods[0]).toMatchObject({ hashrateTh: 250, satsPerThDay: 42, amountCop: 625_000 });
     const [entry] = await admin.listAudit(1);
     expect(entry).toMatchObject({ action: "pago_manual", targetUserId: "a1" });
     expect(entry.summary).toMatch(/Textiles del Valle.*Bloque, mes 1 de 3.*TRANSF-0001/);
@@ -116,10 +116,10 @@ describe("clientes y resumen", () => {
     const o = await admin.adminOverview();
     expect(o).toMatchObject({ capacityTh: 30_000, contractedTh: 250, availableTh: 29_750, activeTh: 250, dailySats: 10_500, activePlans: 1, clients: 1, pendingWithdrawals: 0 });
     // Dos meses del Bloque (transferencias registradas) y uno del Génesis (pago de prueba).
-    expect(o.collectedCop).toBe(1_112_500 * 2 + 4_200_000);
+    expect(o.collectedCop).toBe(625_000 * 2 + 2_300_000);
     // Con dinero real, lo cobrado no cuenta los pagos de prueba.
     vi.stubEnv("DEMO_MODE", "false");
-    expect((await admin.adminOverview()).collectedCop).toBe(1_112_500 * 2);
+    expect((await admin.adminOverview()).collectedCop).toBe(625_000 * 2);
     vi.stubEnv("DEMO_MODE", "");
     // a1: 6 días × 10.500 sats; a2: 5 días × 42.000 sats antes del cierre.
     expect(o.owedSats).toBe(63_000 + 210_000);
@@ -147,10 +147,10 @@ describe("configuración de la granja y de los planes", () => {
     vi.setSystemTime(T0 + 6 * DAY_MS);
     const minedBefore = (await portfolio.getPortfolio("a1")).minedSats;
     const current = await settings.readSettings();
-    const next = await admin.updateFarmSettings(actor, { ...current, satsPerThDay: 45, planPrices: { ...current.planPrices, h100: 4800 } });
-    expect(next).toMatchObject({ satsPerThDay: 45, planPrices: { h1000: 4200, h500: 4300, h250: 4450, h100: 4800 } });
+    const next = await admin.updateFarmSettings(actor, { ...current, satsPerThDay: 45, planPrices: { ...current.planPrices, h100: 2800 } });
+    expect(next).toMatchObject({ satsPerThDay: 45, planPrices: { h1000: 2300, h500: 2400, h250: 2500, h100: 2800 } });
     const catalog = await plans.getCatalog();
-    expect(catalog.plans.find((p) => p.id === "h100")).toMatchObject({ priceCopPerThMonth: 4800, satsPerThDay: 45, monthlyCop: 480_000, dailySats: 4_500 });
+    expect(catalog.plans.find((p) => p.id === "h100")).toMatchObject({ priceCopPerThMonth: 2800, satsPerThDay: 45, monthlyCop: 280_000, dailySats: 4_500 });
     // a1 ya tenía sus dos meses pagados a 42 sats: el cambio no toca lo que ya mina.
     expect((await portfolio.getPortfolio("a1")).minedSats).toBe(minedBefore);
     expect((await plans.listSubscriptions("a1"))[0].periods.map((x) => x.satsPerThDay)).toEqual([42, 42]);
@@ -158,9 +158,9 @@ describe("configuración de la granja y de los planes", () => {
 
     await pay.payWithTestPayment({ userId: "a3", planId: "h100" });
     const [a3] = await plans.listSubscriptions("a3");
-    expect(a3).toMatchObject({ priceCopPerThMonth: 4800 });
+    expect(a3).toMatchObject({ priceCopPerThMonth: 2800 });
     expect(a3.periods[0].satsPerThDay).toBe(45);
-    expect((await plans.listSubscriptions("a1"))[0]).toMatchObject({ priceCopPerThMonth: 4450 });
+    expect((await plans.listSubscriptions("a1"))[0]).toMatchObject({ priceCopPerThMonth: 2500 });
     const entry = (await admin.listAudit(20)).find((e) => e.action === "config_granja");
     expect(entry?.summary).toMatch(/hashprice.*precios de los planes/);
   });

@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { PLANS } from "@/config/plans";
 import { goToLoginIfSignedOut, refetch, SESSION_CLOSED, useJson } from "@/lib/client/use-json";
+import { useBtcCop } from "@/lib/client/use-btc-price";
 import { useNetwork } from "@/lib/client/use-network";
 import { catalogFrom, validateSettings, type FarmSettings } from "@/lib/farm-settings";
 import { formatCop, formatDateTime, formatHashprice, formatHashrate, formatNumber, formatPct, formatTh } from "@/lib/format";
@@ -31,6 +32,7 @@ async function saveSettings(next: Omit<FarmSettings, "updatedAt">) {
 
 function FarmForm({ initial, contractedTh }: { initial: FarmSettings; contractedTh: number }) {
   const { data: net } = useNetwork();
+  const btcCop = useBtcCop();
   const [name, setName] = useState(initial.name);
   const [location, setLocation] = useState(initial.location);
   const [capacity, setCapacity] = useState(formatNumber(initial.capacityTh));
@@ -116,7 +118,7 @@ function FarmForm({ initial, contractedTh }: { initial: FarmSettings; contracted
           Precios de los planes
         </h2>
         <p className="mt-1 text-sm text-mute">
-          Precio por TH/s al mes, en pesos. Cada plan comprado conserva su precio{net ? `; la estimación usa el BTC a ${formatCop(net.btc.cop)}` : ""}.
+          Precio por TH/s al mes, en pesos. Cada plan comprado conserva su precio{btcCop ? `; la estimación usa el BTC en vivo, ahora a ${formatCop(btcCop)}` : ""}.
         </p>
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -131,7 +133,7 @@ function FarmForm({ initial, contractedTh }: { initial: FarmSettings; contracted
             </thead>
             <tbody>
               {preview.map((plan) => {
-                const est = net && plan.monthlyCop > 0 ? estimateReturn(plan, net.btc.cop) : null;
+                const est = btcCop && plan.monthlyCop > 0 ? estimateReturn(plan, btcCop) : null;
                 return (
                   <tr key={plan.id} className="border-t border-line">
                     <th scope="row" className="py-3 pr-4 text-left font-medium">

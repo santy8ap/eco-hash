@@ -29,10 +29,10 @@ describe("catálogo de hashrate", () => {
   it("son cuatro planes de 3 meses: 100, 250, 500 y 1.000 TH/s", () => {
     expect(PLAN_MONTHS).toBe(3);
     expect(PLANS.map((p) => [p.id, p.name, p.hashrateTh, p.priceCopPerThMonth])).toEqual([
-      ["h100", "Nonce", 100, 4600],
-      ["h250", "Bloque", 250, 4450],
-      ["h500", "Cadena", 500, 4300],
-      ["h1000", "Génesis", 1000, 4200],
+      ["h100", "Nonce", 100, 2600],
+      ["h250", "Bloque", 250, 2500],
+      ["h500", "Cadena", 500, 2400],
+      ["h1000", "Génesis", 1000, 2300],
     ]);
   });
 
@@ -46,25 +46,25 @@ describe("catálogo de hashrate", () => {
 describe("economía de un plan", () => {
   it("mensualidad en pesos y sats estimados por día, mes y contrato", () => {
     const rows = PLANS.map((plan) => planEconomics(plan, 42));
-    expect(rows.map((r) => r.monthlyCop)).toEqual([460_000, 1_112_500, 2_150_000, 4_200_000]);
-    expect(rows.map((r) => r.totalCop)).toEqual([1_380_000, 3_337_500, 6_450_000, 12_600_000]);
+    expect(rows.map((r) => r.monthlyCop)).toEqual([260_000, 625_000, 1_200_000, 2_300_000]);
+    expect(rows.map((r) => r.totalCop)).toEqual([780_000, 1_875_000, 3_600_000, 6_900_000]);
     expect(rows.map((r) => r.dailySats)).toEqual([4_200, 10_500, 21_000, 42_000]);
     expect(rows.map((r) => r.monthlySats)).toEqual([126_000, 315_000, 630_000, 1_260_000]);
     expect(rows[0]).toMatchObject({ months: 3, hashrateTh: 100, totalSats: 378_000 });
   });
 
   it("la rentabilidad se estima al precio del BTC que se le pase", () => {
-    const est = estimateReturn(planEconomics(PLANS[0], 42), 420_000_000);
-    expect(est.monthlyValueCop).toBe(529_200);
-    expect(est.monthlyProfitCop).toBe(69_200);
-    expect(est.profitPct).toBeCloseTo(0.150434, 5);
-    expect(est.breakEvenBtcCop).toBe(365_079_365);
+    const est = estimateReturn(planEconomics(PLANS[0], 42), 210_000_000);
+    expect(est.monthlyValueCop).toBe(264_600);
+    expect(est.monthlyProfitCop).toBe(4_600);
+    expect(est.profitPct).toBeCloseTo(0.017692, 5);
+    expect(est.breakEvenBtcCop).toBe(206_349_206);
   });
 
   it("con el BTC barato la estimación muestra pérdida, sin inventar ganancias", () => {
-    const est = estimateReturn(planEconomics(PLANS[0], 42), 300_000_000);
-    expect(est.monthlyValueCop).toBe(378_000);
-    expect(est.monthlyProfitCop).toBe(-82_000);
+    const est = estimateReturn(planEconomics(PLANS[0], 42), 180_000_000);
+    expect(est.monthlyValueCop).toBe(226_800);
+    expect(est.monthlyProfitCop).toBe(-33_200);
     expect(est.profitPct).toBeLessThan(0);
   });
 });
