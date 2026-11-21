@@ -14,6 +14,7 @@ import { ErrorNote, Field } from "@/components/ui/field";
 import { Status, TX_STATUS } from "@/components/ui/status";
 import { toast } from "@/components/ui/toast";
 import { AdminTopbar } from "./shell";
+import { OutboundLink } from "@/components/ui/outbound-link";
 
 
 const FILTERS: { id: PaymentFilter; label: string }[] = [
@@ -195,14 +196,9 @@ function PaymentActions({
           </button>
         )}
         {explorer && (
-          <a
-            href={explorer}
-            target="_blank"
-            rel="noreferrer"
-            className="link inline-flex items-center gap-1.5"
-          >
+          <OutboundLink href={explorer} className="link inline-flex min-h-6 items-center gap-1.5">
             Ver en BscScan <ExternalLink size={12} aria-hidden="true" />
-          </a>
+          </OutboundLink>
         )}
       </div>
       {mode === "confirmar_transferencia" && (

@@ -5,6 +5,7 @@ import { useCatalog } from "@/lib/client/use-catalog";
 import { useNetwork } from "@/lib/client/use-network";
 import { useNow } from "@/lib/client/use-now";
 import { formatNumber, formatTh } from "@/lib/format";
+import { OutboundLink } from "@/components/ui/outbound-link";
 
 const HEX = "0123456789abcdef";
 const STARTER = PLANS[0];
@@ -92,9 +93,10 @@ export function BlockReadout() {
           {!net ? "Conectando con la red Bitcoin…" : live ? "Red Bitcoin en vivo" : "Red Bitcoin (valores de referencia)"}
         </p>
         {live && (
-          <a href={`https://mempool.space/block/${net.lastBlockHash ?? net.height}`} target="_blank" rel="noreferrer" className="link text-xs text-mute">
+          // 44 px de alto: se toca con el dedo sin tener que apuntar.
+          <OutboundLink href={`https://mempool.space/block/${net.lastBlockHash ?? net.height}`} className="link -my-3 inline-flex min-h-11 items-center text-sm text-fog">
             Ver en mempool.space
-          </a>
+          </OutboundLink>
         )}
       </div>
 

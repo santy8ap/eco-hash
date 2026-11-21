@@ -13,6 +13,7 @@ import { PLAN_STATE, Status, TX_STATUS } from "@/components/ui/status";
 import { ClosePlanDialog, DataRequestDialog, ManualPaymentDialog } from "./clients";
 import { AdminTopbar } from "./shell";
 import { actionLabel, type AdminClient } from "./types";
+import { OutboundLink } from "@/components/ui/outbound-link";
 
 interface Detail {
   client: AdminClient;
@@ -330,9 +331,9 @@ function Movements({ rows, empty }: { rows: Detail["movements"]; empty: string }
               </p>
               {m.note && <p className="mt-1 text-xs text-fog">{m.note}</p>}
               {explorer && (
-                <a href={explorer} target="_blank" rel="noreferrer" className="link mt-1 inline-flex items-center gap-1 text-xs">
+                <OutboundLink href={explorer} className="link mt-1 inline-flex min-h-6 items-center gap-1 text-xs">
                   Ver en el explorador <ExternalLink size={11} strokeWidth={1.5} />
-                </a>
+                </OutboundLink>
               )}
             </div>
             <span className="num text-base sm:text-right">{m.kind === "retiro" ? `−${formatCop(m.amountCop)}` : formatCop(m.amountCop)}</span>

@@ -11,6 +11,7 @@ import { Status } from "@/components/ui/status";
 import { toast } from "@/components/ui/toast";
 import { AdminTopbar } from "./shell";
 import type { AdminWithdrawal } from "./types";
+import { OutboundLink } from "@/components/ui/outbound-link";
 
 const LIST_URL = "/api/admin/withdrawals";
 
@@ -163,9 +164,9 @@ function ReviewedWithdrawal({ w }: { w: AdminWithdrawal }) {
           <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-dim">
             <span className="hash">Txid {w.txHash}</span>
             {explorerTxUrl(w) && (
-              <a href={explorerTxUrl(w)!} target="_blank" rel="noreferrer" className="link inline-flex items-center gap-1 text-fog">
+              <OutboundLink href={explorerTxUrl(w)!} className="link inline-flex min-h-6 items-center gap-1 text-fog">
                 mempool.space <ExternalLink size={11} />
-              </a>
+              </OutboundLink>
             )}
           </p>
         )}

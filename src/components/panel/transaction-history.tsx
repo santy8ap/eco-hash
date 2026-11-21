@@ -16,6 +16,7 @@ import { ReceiptButton } from "@/components/payments/receipt-button";
 import { ErrorNote } from "@/components/ui/field";
 import { Status, TX_STATUS } from "@/components/ui/status";
 import { explorerTxUrl, isBtcTxid, txAmount, txDetail, txTitle } from "./tx-meta";
+import { OutboundLink } from "@/components/ui/outbound-link";
 
 const INITIAL = {
   desde: "",
@@ -224,14 +225,9 @@ export function TransactionHistory({ asOf }: { asOf: number }) {
                         </Link>
                       )}
                     {explorer && (
-                      <a
-                        href={explorer}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="link inline-flex items-center gap-2 text-sm text-fog"
-                      >
+                      <OutboundLink href={explorer} className="link inline-flex min-h-6 items-center gap-2 text-sm text-fog">
                         {tx.kind === "retiro" ? "Ver en mempool.space" : "Ver en BscScan"} <ExternalLink size={12} />
-                      </a>
+                      </OutboundLink>
                     )}
                     <Link
                       href={`/ayuda?ref=${encodeURIComponent(tx.id)}`}

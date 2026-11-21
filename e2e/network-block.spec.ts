@@ -40,6 +40,31 @@ test("el bloque en vivo muestra la altura, el hash con sus ceros y lo que minar�
   await expect(strip).toContainText("+2,75 %");
 });
 
+test("el bloque se abre en mempool.space aunque el navegador no abra pestañas nuevas, y el enlace se puede tocar con el dedo", async ({ page }) => {
+  await page.route("**/api/network", (route) => route.fulfill({ json: network("mempool") }));
+  await page.route("https://mempool.space/**", (route) => route.fulfill({ contentType: "text/html", body: "<title>mempool</title>" }));
+  // Como el navegador interno de muchas apps: ignora target="_blank" y window.open no abre nada.
+  await page.addInitScript(() => {
+    window.open = () => null;
+  });
+  await page.goto("/");
+  const link = page.getByRole("region", { name: "Red Bitcoin en este momento" }).getByRole("link", { name: /mempool\.space/ });
+  // 24 px es el mínimo de WCAG 2.2 para un objetivo táctil.
+  expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+  await link.click();
+  await expect(page).toHaveURL(`https://mempool.space/block/${HASH}`);
+});
+
+test("en un navegador normal el bloque se abre en una pestaña nueva y la portada sigue abierta", async ({ page }) => {
+  await page.route("**/api/network", (route) => route.fulfill({ json: network("mempool") }));
+  await page.context().route("https://mempool.space/**", (route) => route.fulfill({ contentType: "text/html", body: "<title>mempool</title>" }));
+  await page.goto("/");
+  const popup = page.waitForEvent("popup");
+  await page.getByRole("region", { name: "Red Bitcoin en este momento" }).getByRole("link", { name: /mempool\.space/ }).click();
+  expect((await popup).url()).toBe(`https://mempool.space/block/${HASH}`);
+  expect(new URL(page.url()).pathname).toBe("/");
+});
+
 test("sin conexión con mempool.space se rotulan los valores de referencia y no se inventa un hash", async ({ page }) => {
   await page.route("**/api/network", (route) => route.fulfill({ json: network("referencia") }));
   await page.goto("/");
