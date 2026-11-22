@@ -36,9 +36,10 @@ export function AccountLink({
       </Link>
     );
   return (
-    <Link href="/panel" className={`btn btn-ghost inline-flex items-center gap-2.5 ${size} ${className}`} aria-label={`Ir a mi panel, ${user.name}`}>
+    <Link href="/panel" className={`btn btn-ghost inline-flex items-center gap-2.5 whitespace-nowrap ${size} ${className}`} aria-label={`Ir a mi panel, ${user.name}`}>
       <Avatar name={user.name} image={user.image} size={variant === "nav" ? 22 : 24} />
-      Mi panel
+      {/* En la cabecera de un celular de 320 px solo cabe la foto; el nombre accesible sigue diciendo «Ir a mi panel». */}
+      <span className={variant === "nav" ? "max-[379px]:sr-only" : undefined}>Mi panel</span>
     </Link>
   );
 }

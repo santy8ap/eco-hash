@@ -68,7 +68,8 @@ export function SatsChart({ rows, btcCop }: { rows: DayReturn[]; btcCop: number 
         </table>
       ) : (
         <div className="relative mt-2">
-          <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-labelledby={`${id}-t`}>
+          {/* Un grupo y no una imagen: adentro, cada columna se enfoca con el teclado para leer su valor. */}
+          <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="group" aria-labelledby={`${id}-t`}>
             <title id={`${id}-t`}>
               {`Sats minados por día, últimos ${days.length} días. Máximo ${formatNumber(max)} sats.`}
             </title>
@@ -99,7 +100,7 @@ export function SatsChart({ rows, btcCop }: { rows: DayReturn[]; btcCop: number 
                 <g
                   key={d.dayStart}
                   tabIndex={0}
-                  role="button"
+                  role="img"
                   aria-label={`${d.today ? "Hoy" : formatDay(d.dayStart)}: ${formatNumber(d.sats, d.today ? 1 : 0)} sats`}
                   onPointerEnter={() => setActive(i)}
                   onPointerLeave={() => setActive(null)}

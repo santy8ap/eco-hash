@@ -52,3 +52,20 @@ test("la portada respeta la preferencia de movimiento reducido", async ({ page }
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "Ver los planes" })).toBeVisible();
 });
+
+test("con el tema claro guardado, el panel y el admin cargan sin errores de hidratación y con el ícono correcto", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => localStorage.setItem("ech:theme", "light"));
+  await page.goto("/ingresar");
+  await page.getByRole("button", { name: /Entrar con la cuenta de pruebas/i }).click();
+  await expect(page).toHaveURL(/\/panel$/);
+  // Cargas completas: el HTML del servidor (tema por defecto) tiene que hidratar con el tema guardado.
+  for (const url of ["/panel", "/panel/perfil", "/admin"]) {
+    await page.goto(url);
+    await page.waitForLoadState("networkidle");
+    const toggle = page.getByRole("button", { name: /^Tema / }).first();
+    await expect(toggle).toHaveAccessibleName("Tema claro. Cambiar a oscuro");
+  }
+  expect(errors).toEqual([]);
+});

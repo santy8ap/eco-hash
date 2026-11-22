@@ -68,8 +68,9 @@
     --color-amber-soft: rgb(240 160 32 / 0.16);
     --color-chart: #b9700a;
     --color-jade: #13a26f;
-    --color-jade-text: #0b7650;
-    --color-coral: #c8412d;
+    /* 4,5:1 o más también dentro de las píldoras de estado y sobre la superficie más oscura del tema (seam) */
+    --color-jade-text: #076344;
+    --color-coral: #ad3320;
     --color-action-hover: #f7ae3a;
     --color-scrim: #12201a;
     color-scheme: light;
@@ -109,6 +110,15 @@
 }
 
 @layer components {
+  /*
+   * Lo que depende del tema se muestra con CSS a partir de data-theme en <html> (lo fija el script de arranque antes
+   * de pintar): el HTML del servidor es el mismo con los dos temas y nunca choca con la hidratación.
+   */
+  html:not([data-theme="light"]) .when-light,
+  html[data-theme="light"] .when-dark {
+    display: none;
+  }
+
   /* Titulares: Geologica con el filo del mineral, en tipo de oración. */
   .display {
     font-family: var(--font-sans);
@@ -338,6 +348,10 @@
   .status[data-tone="act"] {
     background: color-mix(in srgb, var(--color-coral) 18%, transparent);
     color: var(--color-coral);
+  }
+  /* En el tema claro el tinte va más suave: con el 18 % el texto coral no llega a 4,5:1. */
+  html[data-theme="light"] .status[data-tone="act"] {
+    background: color-mix(in srgb, var(--color-coral) 10%, transparent);
   }
 
   /* Un LED de la granja: verde y latiendo si está en línea. */

@@ -8,7 +8,7 @@ import { BRAND } from "@/config/brand";
 import { ADMIN_ROLE_LABEL } from "@/lib/admin/roles";
 import { useJson } from "@/lib/client/use-json";
 import { Avatar } from "@/components/ui/avatar";
-import { Logo } from "@/components/ui/logo";
+import { Logo, LogoMark } from "@/components/ui/logo";
 import { ThemeSelector } from "@/components/ui/theme-selector";
 import { useUser } from "@/components/panel/user-context";
 
@@ -190,8 +190,10 @@ export function AdminMobileBar() {
   const user = useUser();
   return (
     <header className="flex items-center justify-between gap-3 border-b border-line bg-raise px-4 py-3 lg:hidden">
-      <Link href="/" aria-label={`${BRAND.name}, inicio`}>
-        <Logo />
+      {/* En pantallas muy angostas (320 px) solo cabe el símbolo junto a las salidas. */}
+      <Link href="/" aria-label={`${BRAND.name}, inicio`} className="shrink-0">
+        <LogoMark size={28} className="min-[400px]:hidden" />
+        <Logo className="max-[399px]:hidden" />
       </Link>
       <div className="flex items-center gap-2 text-sm text-mute sm:gap-4">
         {/* En pantallas angostas no hay barra lateral: el rol va aquí, para saber con qué permisos se entró. */}
@@ -200,10 +202,10 @@ export function AdminMobileBar() {
             {ADMIN_ROLE_LABEL[user.adminRole]}
           </span>
         )}
-        <Link href="/panel" className="hover:text-ink">
+        <Link href="/panel" className="inline-flex min-h-11 items-center px-1 hover:text-ink">
           Mi panel
         </Link>
-        <button type="button" disabled={out} onClick={() => startOut(() => signOut())} className="hover:text-ink">
+        <button type="button" disabled={out} onClick={() => startOut(() => signOut())} className="inline-flex min-h-11 items-center px-1 hover:text-ink">
           {out ? "Saliendo…" : "Salir"}
         </button>
         <ThemeSelector />

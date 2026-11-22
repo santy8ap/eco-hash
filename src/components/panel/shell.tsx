@@ -10,7 +10,7 @@ import { useBtcPrice } from "@/lib/client/use-btc-price";
 import { useNetwork } from "@/lib/client/use-network";
 import { formatNumber } from "@/lib/format";
 import { LivePrice } from "@/components/ui/live-price";
-import { Logo } from "@/components/ui/logo";
+import { Logo, LogoMark } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeSelector } from "@/components/ui/theme-selector";
 import { useUser } from "./user-context";
@@ -112,21 +112,23 @@ export function MobileBar() {
   const [pending, start] = useTransition();
   return (
     <header className="flex items-center justify-between border-b border-line bg-raise px-4 py-3 lg:hidden">
-      <Link href="/" aria-label={`${BRAND.name}, inicio`}>
-        <Logo />
+      {/* En pantallas muy angostas (320 px) solo cabe el símbolo junto a los botones de la cuenta. */}
+      <Link href="/" aria-label={`${BRAND.name}, inicio`} className="shrink-0">
+        <LogoMark size={28} className="min-[400px]:hidden" />
+        <Logo className="max-[399px]:hidden" />
       </Link>
       <div className="flex items-center gap-2 text-sm text-mute sm:gap-3">
-        <Link href="/panel/perfil" className="hover:opacity-80">
+        <Link href="/panel/perfil" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:opacity-80">
           <Avatar name={user.name} image={user.image} size={28} />
           <span className="sr-only">Mis datos, {user.name}</span>
         </Link>
         <NotificationsLink />
         {user.canAdmin && (
-          <Link href="/admin" className="hover:text-ink">
+          <Link href="/admin" className="inline-flex min-h-11 items-center px-1 hover:text-ink">
             Admin
           </Link>
         )}
-        <button type="button" disabled={pending} onClick={() => start(() => signOut())} className="hover:text-ink">
+        <button type="button" disabled={pending} onClick={() => start(() => signOut())} className="inline-flex min-h-11 items-center px-1 hover:text-ink">
           {pending ? "Saliendo…" : "Salir"}
         </button>
         <ThemeSelector />

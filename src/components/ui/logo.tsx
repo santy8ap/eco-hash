@@ -22,7 +22,8 @@ export function Logo({ className = "", size = "compact" }: { className?: string;
   return (
     <span className={`inline-flex items-center gap-2.5 text-ink ${className}`}>
       <LogoMark size={header ? 34 : 28} />
-      <span className={`display font-semibold tracking-[-0.03em] ${header ? "text-[1.3rem]" : "text-[1.12rem]"}`}>{BRAND.name}</span>
+      {/* El guion de «eco-hash» no debe partir el nombre en dos líneas. */}
+      <span className={`display whitespace-nowrap font-semibold tracking-[-0.03em] ${header ? "text-[1.3rem]" : "text-[1.12rem]"}`}>{BRAND.name}</span>
     </span>
   );
 }
