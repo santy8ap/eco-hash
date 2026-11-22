@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { adminRoleOf } from "@/lib/admin/team";
+import { loginHref } from "@/lib/navigation";
 import { getSessionUser } from "@/lib/session";
 import { WalletProvider } from "@/lib/wallet/context";
 import { CryptoRecovery } from "@/components/panel/crypto-recovery";
@@ -14,7 +15,7 @@ export const instant = false;
 
 async function SessionGate({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
-  if (!user) redirect("/ingresar");
+  if (!user) redirect(loginHref("/panel"));
   return (
     <UserProvider user={{ ...user, canAdmin: (await adminRoleOf(user.email)) !== null }}>
       <WalletProvider>

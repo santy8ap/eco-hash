@@ -9,7 +9,7 @@ import { PLANS } from "@/config/plans";
 import { planCheckoutHref, safeReturnTo } from "@/lib/navigation";
 import { adminEmailAllowed, env, isDemoMode } from "@/lib/env";
 
-export type ActionState = { error?: string } | undefined;
+export type ActionState = { error?: string; redirectTo?: string } | undefined;
 
 /** A dónde va una empresa al entrar: al plan que eligió en el inicio, o a su panel. */
 function panelDestination(planId: unknown, returnTo: unknown) {
@@ -41,11 +41,13 @@ export async function signInDemo(
     body: { email: env.demoEmail, password: env.demoPassword },
     headers: await headers(),
   });
-  redirect(
-    asAdmin
+  // El navegador carga el destino completo (login-options), no con el enrutador: este pudo guardar, de cuando no
+  // había sesión, que el destino manda a ingresar, y reusarlo devolvería a ingresar en lugar de entrar.
+  return {
+    redirectTo: asAdmin
       ? "/admin"
       : panelDestination(formData.get("plan"), formData.get("next")),
-  );
+  };
 }
 
 export async function signOut() {

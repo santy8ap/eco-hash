@@ -74,7 +74,7 @@ Consulta [.env.example](.env.example). Lo mínimo para publicar en modo de prueb
 | `SUPPORT_EMAIL`, `SUPPORT_WHATSAPP` | Contactos oficiales (también desde el admin) |
 | `DEMO_MODE` | `true`: pruebas; `false`: cobros reales |
 
-**Sin Turso, la base de Vercel es temporal** (un archivo en `/tmp` que se pierde cuando la función se reinicia). Sirve para mostrar la demo, no para operar: conecta Turso desde Vercel → Storage antes de recibir clientes.
+**Sin Turso, el panel no funciona en Vercel.** Cada función tiene su propia base temporal (un archivo en `/tmp` que se pierde al reiniciarse), así que las páginas y la API no comparten sesiones ni datos: después de ingresar, el panel te devuelve a ingresar con el aviso «No pudimos confirmar tu sesión». Conecta Turso desde Vercel → Storage (Create Database → Turso → Connect Project, prefijo por defecto) antes de mostrar la demo.
 
 Las migraciones se aplican solas al arrancar. La tabla de control es `__ecohash_migrations` y la migración inicial crea todo el esquema (`farm`, `plan_subscription` y `plan_period` con TH/s y hashprice, `ledger_tx` con `hashrate_th` y `amount_sats`).
 

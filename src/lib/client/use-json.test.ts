@@ -17,7 +17,10 @@ describe("sesión cerrada al enviar una acción", () => {
     const replace = browserAt("/admin/pagos", "?estado=en_proceso");
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "Inicia sesión para continuar" }, { status: 401 })));
     await expect(postJson("/api/admin/payments/ECH-1", { action: "confirmar" })).rejects.toThrow(SESSION_CLOSED);
-    expect(replace).toHaveBeenCalledWith(`/ingresar?${new URLSearchParams({ rol: "admin", next: "/admin/pagos?estado=en_proceso" })}`);
+    // «sesion=cerrada»: ingresar no debe devolverlo de inmediato a la página que acaba de rechazar la sesión.
+    expect(replace).toHaveBeenCalledWith(
+      `/ingresar?${new URLSearchParams({ rol: "admin", next: "/admin/pagos?estado=en_proceso", sesion: "cerrada" })}`,
+    );
   });
 
   it("los demás errores se muestran como siempre, sin salir de la página", async () => {

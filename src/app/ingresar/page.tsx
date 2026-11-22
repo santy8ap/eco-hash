@@ -4,7 +4,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { BRAND } from "@/config/brand";
 import { PLANS } from "@/config/plans";
-import { planCheckoutHref, safeReturnTo } from "@/lib/navigation";
+import { databaseTarget } from "@/lib/db/target";
+import { planCheckoutHref, safeReturnTo, sessionWasRejected } from "@/lib/navigation";
 import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { adminEmailAllowed, env, googleEnabled, isDemoMode } from "@/lib/env";
@@ -16,12 +17,12 @@ import { LoginOptions } from "./login-options";
 
 export const metadata: Metadata = { title: "Ingresar" };
 
-type Params = { rol?: string; plan?: string; next?: string };
+type Params = { rol?: string; plan?: string; next?: string; sesion?: string };
 
 async function Options({ searchParams }: { searchParams: Promise<Params> }) {
   // Se lee al momento de la visita: si agregas las credenciales de Google no hace falta recompilar.
   await connection();
-  const { rol, plan, next } = await searchParams;
+  const { rol, plan, next, sesion } = await searchParams;
   const requested = safeReturnTo(next);
   const planId =
     plan ??
@@ -31,9 +32,19 @@ async function Options({ searchParams }: { searchParams: Promise<Params> }) {
   const chosen = PLANS.find((p) => p.id === planId);
   const returnTo =
     requested ?? (chosen ? planCheckoutHref(chosen.id) : "/panel");
-  if (rol !== "admin" && (await getSessionUser())) redirect(returnTo);
+  const signedIn = (await getSessionUser()) !== null;
+  // Con la sesión abierta se va directo al destino, salvo que el destino acabe de rechazarla: sería un bucle.
+  const bounced = signedIn && sessionWasRejected(sesion);
+  if (signedIn && rol !== "admin" && !bounced) redirect(returnTo);
   return (
     <>
+      {bounced && (
+        <p className="mb-7 rounded-[10px] border border-coral/40 bg-coral/10 px-4 py-3 text-sm leading-relaxed text-ink">
+          <strong className="font-medium">No pudimos confirmar tu sesión.</strong> Vuelve a ingresar para seguir.
+          {databaseTarget().kind === "temporal" &&
+            " Este servidor todavía no tiene una base de datos conectada, así que la sesión no llega a todas las partes de la app."}
+        </p>
+      )}
       {chosen && (
         <p className="tile mb-7 px-4 py-3 text-sm leading-relaxed text-fog">
           Elegiste el plan <strong className="font-medium text-ink">{chosen.name}</strong> ({chosen.hashrateTh} TH/s). Entra, completa tus datos

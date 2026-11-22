@@ -103,7 +103,7 @@ test("plan → ingreso → datos personales → resumen → pago de prueba → p
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/#planes");
   await page.locator('a[href="/comprar?plan=h100"]:visible').click();
-  await expect(page).toHaveURL(/\/ingresar\?next=%2Fcomprar%3Fplan%3Dh100$/);
+  await expect(page).toHaveURL(/\/ingresar\?next=%2Fcomprar%3Fplan%3Dh100&sesion=cerrada$/);
   await expect(page.getByText(/Elegiste el plan Nonce/)).toBeVisible();
   await page.getByRole("button", { name: /Entrar con la cuenta de pruebas/i }).click();
   await expect(page).toHaveURL(/\/comprar\?plan=h100$/);

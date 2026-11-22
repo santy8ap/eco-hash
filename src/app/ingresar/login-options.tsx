@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { planCheckoutHref, safeReturnTo } from "@/lib/navigation";
 import { signInDemo } from "./actions";
@@ -43,7 +43,13 @@ export function LoginOptions({
   returnTo?: string;
 }) {
   const [role, setRole] = useState<Role>(defaultRole);
-  const [state, formAction, pending] = useActionState(signInDemo, undefined);
+  const [state, formAction, signingIn] = useActionState(signInDemo, undefined);
+  // Ya hay sesión: el navegador carga el destino completo (ver signInDemo). Mientras tanto sigue «Entrando…».
+  const redirectTo = state?.redirectTo;
+  const pending = signingIn || Boolean(redirectTo);
+  useEffect(() => {
+    if (redirectTo) window.location.assign(redirectTo);
+  }, [redirectTo]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 

@@ -28,8 +28,20 @@ export const planCheckoutHref = (planId: string) =>
 export const renewalCheckoutHref = (subscriptionId: string) =>
   `/comprar?suscripcion=${encodeURIComponent(subscriptionId)}`;
 
-/** El ingreso con regreso a `returnTo`; si es una página del admin, abre directo la opción «Administrador». */
+/**
+ * El ingreso para quien una página o la API acaba de mandar a ingresar, con regreso a `returnTo`; si es una página
+ * del admin, abre directo la opción «Administrador». Lleva «sesion=cerrada» (ver sessionWasRejected).
+ */
 export function loginHref(returnTo: string) {
   const next = safeReturnTo(returnTo) ?? "/panel";
-  return `/ingresar?${new URLSearchParams(next.startsWith("/admin") ? { rol: "admin", next } : { next })}`;
+  const params = new URLSearchParams(next.startsWith("/admin") ? { rol: "admin", next } : { next });
+  params.set("sesion", "cerrada");
+  return `/ingresar?${params}`;
 }
+
+/**
+ * ¿Se llegó a ingresar porque el destino no reconoció la sesión? Entonces ingresar no devuelve solo al destino
+ * aunque aquí la sesión sí aparezca: el destino la rechazaría otra vez y la página quedaría rebotando sin fin
+ * (pasaba en Vercel sin una base compartida, donde cada función tiene la suya).
+ */
+export const sessionWasRejected = (sesion: unknown) => sesion === "cerrada";
